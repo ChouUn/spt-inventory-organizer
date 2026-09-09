@@ -1,0 +1,46 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net481</TargetFramework>
+    <RuntimeIdentifier>win-x64</RuntimeIdentifier>
+    <PlatformTarget>x64</PlatformTarget>
+    <SelfContained>false</SelfContained>
+    <AssemblyName>ChouUn.Spike.OrTools</AssemblyName>
+    <RootNamespace>ChouUn.Spike.OrTools</RootNamespace>
+    <LangVersion>latest</LangVersion>
+    <Nullable>enable</Nullable>
+    <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
+    <AppendRuntimeIdentifierToOutputPath>false</AppendRuntimeIdentifierToOutputPath>
+    <GenerateDependencyFile>false</GenerateDependencyFile>
+    <ProduceReferenceAssembly>false</ProduceReferenceAssembly>
+  </PropertyGroup>
+
+  <!-- SPT 安装目录来自环境变量或 -p:SPT_DIR=...，本机路径不进仓库 -->
+  <Target Name="RequireSptDir" BeforeTargets="BeforeBuild">
+    <Error Condition="'$(SPT_DIR)' == ''"
+           Text="SPT_DIR 未设置：请指向 SPT 4.1 安装目录" />
+  </Target>
+
+  <PropertyGroup>
+    <BepInExCoreDir>$(SPT_DIR)\BepInEx\core\</BepInExCoreDir>
+    <TarkovManagedDir>$(SPT_DIR)\EscapeFromTarkov_Data\Managed\</TarkovManagedDir>
+  </PropertyGroup>
+
+  <!-- 游戏自带的程序集只作编译引用，不复制到输出 -->
+  <ItemGroup>
+    <Reference Include="BepInEx" Private="false"
+               HintPath="$(BepInExCoreDir)BepInEx.dll" />
+    <Reference Include="UnityEngine" Private="false"
+               HintPath="$(TarkovManagedDir)UnityEngine.dll" />
+    <Reference Include="UnityEngine.CoreModule" Private="false"
+               HintPath="$(TarkovManagedDir)UnityEngine.CoreModule.dll" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Google.OrTools" Version="9.15.6755" />
+    <PackageReference Include="Microsoft.NETFramework.ReferenceAssemblies"
+                      Version="1.0.3"
+                      PrivateAssets="all" />
+  </ItemGroup>
+
+</Project>

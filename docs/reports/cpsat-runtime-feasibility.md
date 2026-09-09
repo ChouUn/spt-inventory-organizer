@@ -1,7 +1,7 @@
 # CP-SAT 运行环境可行性
 
 > Parent: [../index.md](../index.md)
-> Status: 调研完成（2026-09-10）
+> Status: 调研完成，客户端真机验证通过（2026-09-10）
 > Related: [requirements.md](../requirements.md)
 
 ## 结论
@@ -11,13 +11,12 @@
   每个子问题在 1 秒量级内可得最优或可接受的可行解。
 - 服务端可行性明确：SPT 4.1 服务端跑 .NET 10，OR-Tools 提供 net8.0 目标，
   原生库放在服务端 mod 目录即可被探测到。代价是拆成客户端加服务端两个组件。
-- 客户端可行性未在真机验证：托管部分（net462 目标）在 Unity 2022 Mono 下预期可加载，
-  原生库需要额外的加载步骤，已装的插件中没有先例。
+- 客户端可行性已在真机验证：BepInEx 插件在游戏进程内加载 OR-Tools 9.15 并解出最优解。
+  原生库放在插件目录，插件启动时调 `SetDllDirectory` 指向该目录即可。
 - 不论哪一侧，OR-Tools 的 win-x64 原生库共 10 个文件、解压后 74 MB，无法裁剪。
 
-推荐：先用一次真机实验验证客户端内嵌方案，成功则单组件交付；失败则求解放服务端。
-两条路都以「按容器分解、1×1 物品用启发式填充、CP-SAT 只处理大件」为前提。
-求解器放在接口后面，保留纯启发式实现作为退路。
+推荐：客户端单组件，求解器内嵌。前提是「按容器分解、1×1 物品用启发式填充、
+CP-SAT 只处理大件」。求解器放在接口后面，保留纯启发式实现作为退路。
 
 ## 问题
 
@@ -69,7 +68,26 @@ highs 与 scip 是 ortools.dll 的导入表依赖，即使只用 CP-SAT 也不�
 这只证明 .NET Framework 的 CLR 能加载这套库。Unity 的 Mono 是另一个运行时，
 且 BepInEx 插件目录不在 Windows 的 DLL 搜索路径上，仍需真机验证。
 
-### 规模实验
+### 实验：游戏客户端内加载（真机）
+
+实验插件在 `spikes/ortools-client-load/`。构建为 net481、RID win-x64 的 BepInEx 插件，
+输出目录整体复制到 `BepInEx/plugins/ChouUn.Spike.OrTools/`，共 18 个文件、约 77 MB：
+插件本体、Google.OrTools 与 Google.Protobuf、4 个 System.* 兼容库、10 个原生 DLL。
+
+| 项目 | 观察 |
+| --- | --- |
+| 运行时 | Mono 6.13.0，BepInEx 5.4.23.5 |
+| 原生加载 | 插件 Awake 中 `SetDllDirectory(插件目录)`，之后 P/Invoke 正常解析 |
+| OR-Tools | 9.15.6755 加载成功 |
+| 求解 | 4×4 网格 4 个可转置矩形，NoOverlap2D，Optimal，34 ms |
+| 日志 | 无与 OR-Tools、Protobuf、System.Memory 相关的警告或错误 |
+| 基线 `None` | 不处理搜索路径时 `DllNotFoundException: google-ortools-native` |
+
+基线失败的形态是 `TypeInitializationException`：SWIG 生成的 `*PINVOKE` 类在静态构造器里
+就调原生库，失败后该类型在本进程内永久不可用。因此搜索路径必须在第一次触碰任何
+OR-Tools 类型之前准备好，不能失败后再补救重试。
+
+## 规模实验
 
 物品尺寸按 SPT 4.1 物品模板分布随机生成：1×1 占 57%，2×1 占 18%，2×2 占 7%。
 真实存档更极端：仓库 10×72，顶层 308 个物品，其中 1×1 占 66%，全深度 694 个。
@@ -104,17 +122,20 @@ highs 与 scip 是 ortools.dll 的导入表依赖，即使只用 CP-SAT 也不�
 
 | 方案 | 优点 | 缺点 |
 | --- | --- | --- |
-| A 客户端内嵌 | 单组件；结果直接可用 | 原生加载需处理；未验证；插件多 74 MB |
+| A 客户端内嵌 | 单组件；结果直接可用；已真机验证 | 需 `SetDllDirectory`；插件多 77 MB |
 | B 服务端求解 | 原生探测标准；无 Unity 约束 | 两个组件；HTTP 往返；服务端多 74 MB |
 | C 纯托管启发式 | 零依赖；体积小 | 大件多时利用率不保证；需自写自调 |
 | D 其他托管求解库 | 无原生依赖 | 未找到成熟的纯托管 CP 求解器（未穷举） |
 
-方案 A 的原生加载有两条已知路径，均未在本环境验证：
+方案 A 的原生加载已验证 `SetDllDirectory` 一条路径。另两条未试：
 
-1. 插件启动时按依赖链顺序用 kernel32 LoadLibrary 预载 10 个 DLL 的完整路径，
-   之后 P/Invoke 按模块名解析时命中已加载模块。
-2. 在 Google.OrTools.dll 旁放 Mono 的 dllmap 配置文件把模块名映射到完整路径。
+1. 按依赖链顺序用 LoadLibrary 预载 10 个 DLL 的完整路径。实验插件已实现，
+   配置 `NativeLoadStrategy = Preload` 可切换。
+2. 在 Google.OrTools.dll 旁放 Mono 的 dllmap 配置文件。
    游戏 Managed 目录里没有任何 dllmap 配置，Unity Mono 是否读取它未验证。
+
+不做任何处理（`NativeLoadStrategy = None`）已验证失败，
+`SetDllDirectory` 或等价的路径准备是必需的。
 
 把原生库放到游戏根目录可以绕过搜索路径问题，但 zlib1、bz2 这类通用名
 容易与其他软件冲突，不建议。
@@ -125,8 +146,8 @@ highs 与 scip 是 ortools.dll 的导入表依赖，即使只用 CP-SAT 也不�
 
 ## 未验证
 
-- Unity 2022 Mono 加载 Google.OrTools net462 程序集与原生库：未做真机实验。
-- Google.Protobuf 依赖的 System.Memory 与游戏自带版本的绑定兼容性：未验证。
+- System.Memory 实际绑定到插件目录的 4.5.3 还是游戏 Managed 目录的 facade：未查，
+  但两者并存时加载与求解均正常。
 - .NET 10 服务端实际加载 OR-Tools net8.0 程序集与原生库：未在服务端真机实验，
   依据是 .NET 的向前滚动与程序集目录探测规则。
 - 原生库加载后的内存占用：未测量。

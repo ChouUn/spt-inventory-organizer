@@ -176,5 +176,7 @@ tag 语法有限地参考 IOF 的 `@o`，采用以下元素：
 以下内容不需要用户回答，留给设计阶段：
 
 - 排序与收纳的先后顺序。这是纯算法问题，与游戏接口无关。
-- mod 运行在客户端还是服务端。
-- CP-SAT 是否采用，以及求解时间上限。
+- CP-SAT 的求解时间上限与按容器分解的粒度。
+
+已由调研定论、不再待决：mod 为客户端单组件，CP-SAT 内嵌于客户端。
+依据见 [reports/cpsat-runtime-feasibility.md](reports/cpsat-runtime-feasibility.md)。

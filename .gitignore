@@ -2,3 +2,6 @@
 # 忽略除了 README.md 之外的本地参考资料
 /refs-local/*
 !/refs-local/README.md
+
+# 临时文件夹
+/.temp/*

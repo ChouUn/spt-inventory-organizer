@@ -17,17 +17,34 @@
 
   <PropertyGroup>
     <BepInExCoreDir>$(SPT_DIR)\BepInEx\core\</BepInExCoreDir>
+    <SptPluginsDir>$(SPT_DIR)\BepInEx\plugins\spt\</SptPluginsDir>
     <TarkovManagedDir>$(SPT_DIR)\EscapeFromTarkov_Data\Managed\</TarkovManagedDir>
   </PropertyGroup>
 
-  <!-- 游戏自带的程序集只作编译引用，不复制到输出 -->
+  <!-- 游戏与框架自带的程序集只作编译引用，不复制到输出 -->
   <ItemGroup>
     <Reference Include="BepInEx" Private="false"
                HintPath="$(BepInExCoreDir)BepInEx.dll" />
+    <Reference Include="0Harmony" Private="false"
+               HintPath="$(BepInExCoreDir)0Harmony.dll" />
+    <Reference Include="spt-reflection" Private="false"
+               HintPath="$(SptPluginsDir)spt-reflection.dll" />
+    <Reference Include="Assembly-CSharp" Private="false"
+               HintPath="$(TarkovManagedDir)Assembly-CSharp.dll" />
+    <Reference Include="Comfort" Private="false"
+               HintPath="$(TarkovManagedDir)Comfort.dll" />
+    <Reference Include="ItemComponent.Types" Private="false"
+               HintPath="$(TarkovManagedDir)ItemComponent.Types.dll" />
+    <Reference Include="Sirenix.Serialization" Private="false"
+               HintPath="$(TarkovManagedDir)Sirenix.Serialization.dll" />
+    <Reference Include="Unity.TextMeshPro" Private="false"
+               HintPath="$(TarkovManagedDir)Unity.TextMeshPro.dll" />
     <Reference Include="UnityEngine" Private="false"
                HintPath="$(TarkovManagedDir)UnityEngine.dll" />
     <Reference Include="UnityEngine.CoreModule" Private="false"
                HintPath="$(TarkovManagedDir)UnityEngine.CoreModule.dll" />
+    <Reference Include="UnityEngine.UI" Private="false"
+               HintPath="$(TarkovManagedDir)UnityEngine.UI.dll" />
   </ItemGroup>
 
   <ItemGroup>

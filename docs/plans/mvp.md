@@ -38,7 +38,7 @@ Pinned 与 Locked 物品原地不动。
   - 结果：`src/Core`、`src/Plugin`、`tests/Core.Tests`、解决方案、部署脚本；
     Plugin 的 Awake 只做原生路径准备与日志。
   - 验证：构建与测试通过；游戏日志出现插件加载行（用户验收）。
-- [ ] 2. TagGrammar
+- [x] 2. TagGrammar
   - 结果：按 feat 实现解析器，测试覆盖 feat 中每条规则、每种错误和全部示例。
   - 验证：测试通过。
 - [ ] 3. tag 编辑补丁

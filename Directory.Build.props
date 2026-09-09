@@ -14,6 +14,10 @@
     <PackageReference Include="Microsoft.NETFramework.ReferenceAssemblies"
                       Version="1.0.3"
                       PrivateAssets="all" />
+    <!-- net481 缺少 record 所需的 IsExternalInit，此包只含源码 -->
+    <PackageReference Include="IsExternalInit"
+                      Version="1.0.3"
+                      PrivateAssets="all" />
   </ItemGroup>
 
 </Project>

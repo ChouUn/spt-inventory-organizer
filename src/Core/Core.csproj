@@ -1,0 +1,8 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <AssemblyName>ChouUn.InventoryOrganizer.Core</AssemblyName>
+    <RootNamespace>ChouUn.InventoryOrganizer.Core</RootNamespace>
+  </PropertyGroup>
+
+</Project>

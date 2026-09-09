@@ -1,0 +1,37 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <AssemblyName>ChouUn.InventoryOrganizer</AssemblyName>
+    <RootNamespace>ChouUn.InventoryOrganizer</RootNamespace>
+    <RuntimeIdentifier>win-x64</RuntimeIdentifier>
+    <PlatformTarget>x64</PlatformTarget>
+    <SelfContained>false</SelfContained>
+    <GenerateDependencyFile>false</GenerateDependencyFile>
+  </PropertyGroup>
+
+  <!-- SPT 安装目录来自环境变量或 -p:SPT_DIR=...，本机路径不进仓库 -->
+  <Target Name="RequireSptDir" BeforeTargets="BeforeBuild">
+    <Error Condition="'$(SPT_DIR)' == ''"
+           Text="SPT_DIR 未设置：请指向 SPT 4.1 安装目录" />
+  </Target>
+
+  <PropertyGroup>
+    <BepInExCoreDir>$(SPT_DIR)\BepInEx\core\</BepInExCoreDir>
+    <TarkovManagedDir>$(SPT_DIR)\EscapeFromTarkov_Data\Managed\</TarkovManagedDir>
+  </PropertyGroup>
+
+  <!-- 游戏自带的程序集只作编译引用，不复制到输出 -->
+  <ItemGroup>
+    <Reference Include="BepInEx" Private="false"
+               HintPath="$(BepInExCoreDir)BepInEx.dll" />
+    <Reference Include="UnityEngine" Private="false"
+               HintPath="$(TarkovManagedDir)UnityEngine.dll" />
+    <Reference Include="UnityEngine.CoreModule" Private="false"
+               HintPath="$(TarkovManagedDir)UnityEngine.CoreModule.dll" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Core\Core.csproj" />
+  </ItemGroup>
+
+</Project>

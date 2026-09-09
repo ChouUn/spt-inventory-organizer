@@ -230,6 +230,8 @@ public class TagComponent : ItemComponent
 - F2 折叠：可折叠范围由 `ItemManipulator.CanFold` 判定。
   原版中披挂、背包、耳机没有 `FoldableComponent`；其他 mod 可以给它们加上，
   因此实现只能走 `CanFold`，不能按物品类型硬编码。
+  真机观察（2026-09-10）：用户安装的 mod 已让胸挂、背包、耳机带上该组件，
+  快照中它们的 `CanFold` 为真且处于折叠态。
 - F4 兼容内置锁：`Locked` 物品与含 `Locked` 物品的容器既不能移动也不能作为目标；
   `Pinned` 物品排序时不动，移出容器会触发游戏自动解除 `Pinned`，
   因此需求已定为收纳时跳过 `Pinned` 物品。

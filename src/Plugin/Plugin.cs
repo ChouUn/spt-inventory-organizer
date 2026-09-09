@@ -21,6 +21,7 @@ public sealed class Plugin : BaseUnityPlugin
 
         new EditTagWindowShowPatch().Enable();
         new EditTagWindowSavePatch().Enable();
+        new GridSortPanelSortPatch().Enable();
         Logger.LogInfo($"loaded from {pluginDir}");
     }
 }

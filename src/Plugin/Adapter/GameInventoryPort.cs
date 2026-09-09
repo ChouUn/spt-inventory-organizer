@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using ChouUn.InventoryOrganizer.Core.Inventory;
 using ChouUn.InventoryOrganizer.Core.Organizing;
 using Comfort.Common;
 using Diz.LanguageExtensions;
@@ -12,13 +13,20 @@ namespace ChouUn.InventoryOrganizer.Adapter;
 /// <summary>用游戏 API 实现编排层的出口：先模拟，再交给网络事务执行并同步。</summary>
 internal sealed class GameInventoryPort : IInventoryPort
 {
+    private readonly CompoundItem _root;
     private readonly InventoryController _controller;
-    private readonly Dictionary<string, Item> _items;
+    private Dictionary<string, Item> _items = new Dictionary<string, Item>();
 
     public GameInventoryPort(CompoundItem root, InventoryController controller)
     {
+        _root = root;
         _controller = controller;
-        _items = root.GetAllItems().ToDictionary(item => item.Id);
+    }
+
+    public ItemSnapshot ReadSnapshot()
+    {
+        _items = _root.GetAllItems().ToDictionary(item => item.Id);
+        return SnapshotReader.Read(_root);
     }
 
     public async Task<PortResult> FoldAsync(string itemId)
@@ -38,6 +46,33 @@ internal sealed class GameInventoryPort : IInventoryPort
             return PortResult.Fail(Describe(simulated.Error));
         }
         return await CommitAsync(simulated);
+    }
+
+    public async Task<PortResult> MoveAsync(string itemId, string containerId)
+    {
+        if (!_items.TryGetValue(itemId, out Item item))
+        {
+            return PortResult.Fail("物品已不在范围内");
+        }
+        _items.TryGetValue(containerId, out Item target);
+        if (target is not CompoundItem container)
+        {
+            return PortResult.Fail("目标容器已不在范围内");
+        }
+        foreach (Grid grid in container.Grids)
+        {
+            if (!grid.TryFindLocationForItem(item, out ItemAddress location))
+            {
+                continue;
+            }
+            OperationResult<MoveResult> simulated =
+                ItemManipulator.Move(item, location, _controller, simulate: true);
+            if (simulated.Succeeded)
+            {
+                return await CommitAsync(simulated);
+            }
+        }
+        return PortResult.Fail("没有可用位置");
     }
 
     private async Task<PortResult> CommitAsync(OperationResult simulated)

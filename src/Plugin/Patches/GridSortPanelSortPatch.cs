@@ -1,8 +1,8 @@
 using System;
 using System.Diagnostics;
+using System.Linq;
 using System.Reflection;
 using ChouUn.InventoryOrganizer.Adapter;
-using ChouUn.InventoryOrganizer.Core.Inventory;
 using ChouUn.InventoryOrganizer.Core.Organizing;
 using EFT.Communications;
 using EFT.InventoryLogic;
@@ -49,18 +49,15 @@ internal sealed class GridSortPanelSortPatch : ModulePatch
             InventoryController controller = ControllerField(panel);
             panel.ChangeProgress(inProgress: true);
             var stopwatch = Stopwatch.StartNew();
-            ItemSnapshot snapshot = SnapshotReader.Read(root);
-            long snapshotMs = stopwatch.ElapsedMilliseconds;
             var organizer = new Organizer(new GameInventoryPort(root, controller));
-            OrganizeReport report = await organizer.RunAsync(snapshot);
-            long organizeMs = stopwatch.ElapsedMilliseconds - snapshotMs;
+            OrganizeReport report = await organizer.RunAsync();
+            long organizeMs = stopwatch.ElapsedMilliseconds;
             panel.ChangeProgress(inProgress: false);
             Notify(report);
             await panel.SortAsync();
-            long sortMs = stopwatch.ElapsedMilliseconds - snapshotMs - organizeMs;
+            long sortMs = stopwatch.ElapsedMilliseconds - organizeMs;
             Plugin.Log.LogInfo(
-                $"timing: snapshot {snapshotMs} ms, organize {organizeMs} ms, " +
-                $"native sort {sortMs} ms");
+                $"timing: organize {organizeMs} ms, native sort {sortMs} ms");
         }
         catch (Exception ex)
         {
@@ -73,15 +70,17 @@ internal sealed class GridSortPanelSortPatch : ModulePatch
     private static void Notify(OrganizeReport report)
     {
         Plugin.Log.LogInfo(
-            $"organize: folded {report.Folded}, failures {report.Failures.Count}");
-        foreach (string failure in report.Failures)
+            $"organize: folded {report.Folded}, moved {report.Moved}, " +
+            $"warnings {report.Warnings.Count}, failures {report.Failures.Count}");
+        foreach (string line in report.Warnings.Concat(report.Failures))
         {
-            Plugin.Log.LogWarning(failure);
+            Plugin.Log.LogWarning(line);
         }
-        string text = $"已折叠 {report.Folded} 件";
-        if (report.Failures.Count > 0)
+        string text = $"已折叠 {report.Folded} 件，收纳 {report.Moved} 件";
+        int problems = report.Warnings.Count + report.Failures.Count;
+        if (problems > 0)
         {
-            text += $"，{report.Failures.Count} 件失败，详见日志";
+            text += $"，{problems} 条警告，详见日志";
         }
         NotificationManager.DisplayMessageNotification(text);
     }

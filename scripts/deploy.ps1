@@ -6,6 +6,10 @@ param(
 )
 $ErrorActionPreference = 'Stop'
 if (-not $SptDir) { throw 'SPT_DIR 未设置：请指向 SPT 4.1 安装目录' }
+# 游戏运行时 DLL 被占用，Copy-Item 会半途失败留下混合版本，所以先拒绝。
+if (Get-Process EscapeFromTarkov -ErrorAction SilentlyContinue) {
+    throw '游戏正在运行，关闭后再部署'
+}
 
 $src = Join-Path $PSScriptRoot "../src/Plugin/bin/$Configuration"
 $dst = Join-Path $SptDir 'BepInEx/plugins/ChouUn.InventoryOrganizer'

@@ -82,24 +82,21 @@ flowchart TB
 ```mermaid
 flowchart TB
     Click[Patches 截获排序按钮] --> Snap[GameAdapter 读快照]
-    Snap --> Fold[Orchestrator 阶段一：折叠计划]
-    Fold --> SimF{模拟通过?}
-    SimF -- 否 --> Abort[中止并通知]
-    SimF -- 是 --> Collect[阶段二：Collector 收纳计划]
-    Collect --> SimC{模拟通过?}
-    SimC -- 否 --> Abort
-    SimC -- 是 --> Pack[阶段三：Packing 逐容器排布]
-    Pack --> SimP{模拟通过?}
-    SimP -- 否 --> Abort
-    SimP -- 是 --> Commit[GameAdapter 提交事务]
-    Commit --> Notify[通知结果]
+    Snap --> Fold[阶段一：折叠计划，逐项模拟并提交]
+    Fold --> Collect[阶段二：Collector 收纳计划，逐项模拟并提交]
+    Collect --> Pack[阶段三：Packing 逐容器排布，逐项模拟并提交]
+    Pack --> Notify[通知结果：成功数与失败项]
+    Fold -. 异常 .-> Abort[中止并通知]
+    Collect -. 异常 .-> Abort
+    Pack -. 异常 .-> Abort
 ```
 
 - 快照是纯数据：容器树、每个物品的类别链、名称、FiR、尺寸、可折叠、锁状态、tag 文本。
 - Collector 决定「进哪个容器」时可向 Packing 询问可行性，
   排布阶段再决定「放在哪」。两阶段的具体配合方式属于算法设计，不在本文约束。
 - Pinned 与 Locked 物品在快照中标出，Collector 与 Packing 都把它们当作固定占位。
-- 每个阶段的计划先由 GameAdapter 以 simulate 模式执行，任一步失败即中止。
+- 每项变更先由 GameAdapter 以 simulate 模式执行，通过才提交为一次网络事务。
+  未通过模拟的单项放弃并记入结果，阶段继续；只有异常才中止整理。
 
 ## 数据流：编辑 tag
 

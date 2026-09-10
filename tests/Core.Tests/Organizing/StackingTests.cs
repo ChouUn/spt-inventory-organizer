@@ -12,6 +12,111 @@ namespace ChouUn.InventoryOrganizer.Core.Tests.Organizing;
 public sealed class StackingTests
 {
     [Theory]
+    [InlineData(40, 20, false)]
+    [InlineData(20, 40, false)]
+    [InlineData(30, 30, false)]
+    [InlineData(40, 20, true)]
+    public async Task 根堆数量不改变向子容器合并的方向(
+        int rootCount, int childCount, bool nested)
+    {
+        ItemSnapshot child = CollectPlannerTests.Box("A", "@o n:never;");
+        var port = new StackPort
+        {
+            Tree = CollectPlannerTests.Root(nested
+                ? CollectPlannerTests.Box("B", null, child) : child),
+        };
+        port.Add("root-stack", rootCount);
+        port.Add("child-stack", childCount, owner: "A");
+
+        OrganizeReport report = await Run(port);
+
+        Assert.Equal(("root-stack", "child-stack"), Assert.Single(port.Transfers));
+        Assert.Equal(0, port.Count("root-stack"));
+        Assert.Equal(60, port.Count("child-stack"));
+        Assert.Equal("A", port.Owner("child-stack"));
+        Assert.Equal(60, port.Total);
+        Assert.Equal(1, report.Merged);
+        Assert.Equal(1, report.Moved);
+        Assert.Empty(port.Moves);
+        Assert.Empty(report.Failures);
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task 满堆不参与同箱跨箱或收纳补充(bool nested)
+    {
+        var port = new StackPort
+        {
+            Tree = nested ? CollectPlannerTests.Root(
+                CollectPlannerTests.Box("A", "@o 弹药;"),
+                CollectPlannerTests.Box("B", null,
+                    CollectPlannerTests.Box("C", "@o 弹药;")))
+                : CollectPlannerTests.Root(),
+        };
+        port.Add("partial", 40, LockState.Pinned, nested ? "C" : "root");
+        for (int i = 0; i < 100; i++)
+            port.Add("full" + i, 60, owner: nested ? "A" : "root");
+        port.Add("root-full", 60);
+
+        OrganizeReport report = await Run(port);
+
+        Assert.Empty(port.Transfers);
+        Assert.Equal(0, report.StackChecks);
+        Assert.Equal(40, port.Count("partial"));
+        Assert.Equal(6100, port.Total);
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task 全局未满堆索引跨层合并A与C_B锁定则跳过C(bool lockedB)
+    {
+        var port = new StackPort
+        {
+            Tree = CollectPlannerTests.Root(
+                CollectPlannerTests.Box("A", "@o n:never;"),
+                CollectPlannerTests.Box("B", null,
+                    CollectPlannerTests.Box("C", "@o n:never;"))
+                    with { Lock = lockedB ? LockState.Locked : LockState.Free }),
+        };
+        port.Add("a", 30, owner: "A");
+        port.Add("c", 30, owner: "C");
+        port.Add("b-unmanaged", 30, owner: "B");
+
+        OrganizeReport report = await Run(port);
+
+        Assert.Equal(90, port.Total);
+        Assert.Equal(30, port.Count("b-unmanaged"));
+        Assert.Equal(lockedB ? 0 : 1, report.Merged);
+        if (!lockedB)
+        {
+            Assert.Equal(("c", "a"), Assert.Single(port.Transfers));
+            Assert.Equal(60, port.Count("a"));
+        }
+    }
+
+    [Fact]
+    public async Task 合并填满后即退出候选_同模板兼容配对次数随未满堆线性增长()
+    {
+        var port = new StackPort();
+        for (int i = 0; i < 128; i++) port.Add("partial" + i, 30);
+        for (int i = 0; i < 512; i++) port.Add("full" + i, 60);
+        port.RejectFullChecks = true;
+
+        OrganizeReport report = await Run(port);
+
+        Assert.Equal(64, report.Merged);
+        Assert.Equal(34560, port.Total);
+        Assert.All(port.Counts, count => Assert.Equal(60, count));
+        Assert.InRange(report.StackChecks, 64, 128);
+        int transfers = port.Transfers.Count;
+        OrganizeReport repeat = await Run(port);
+        Assert.Equal(0, repeat.StackChecks);
+        Assert.Equal(transfers, port.Transfers.Count);
+    }
+
+    [Theory]
     [InlineData(false)]
     [InlineData(true)]
     public async Task 跨箱链式补充先折叠_按实际结果保持数量(bool failLast)
@@ -164,13 +269,41 @@ public sealed class StackingTests
         Assert.DoesNotContain(port.Transfers, p => p.Source == "c" || p.Target == "c");
     }
 
+    [Fact]
+    public async Task 同模板不兼容未满堆保留_其他兼容配对仍能释放空间()
+    {
+        var port = new StackPort
+        {
+            Tree = CollectPlannerTests.Root(
+                CollectPlannerTests.Box("A", "@o n:never;"),
+                CollectPlannerTests.Box("B", null,
+                    CollectPlannerTests.Box("C", "@o n:never;"))),
+            RejectFullChecks = true,
+        };
+        port.Add("a", 30, owner: "A");
+        port.Add("b", 30, owner: "C");
+        port.Add("incompatible", 10, owner: "C");
+        port.Incompatible.Add("incompatible");
+
+        OrganizeReport report = await Run(port);
+
+        Assert.Equal(70, port.Total);
+        Assert.Equal(10, port.Count("incompatible"));
+        Assert.Equal(("b", "a"), Assert.Single(port.Transfers));
+        Assert.Equal(1, report.Merged);
+        Assert.Empty(report.Failures);
+    }
+
     private static Task<OrganizeReport> Run(StackPort port) =>
         new Organizer(port, new HeuristicPacker()).RunAsync();
 
     [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public async Task 新移入堆叠由未选中候选补满_余量才进入后续规则(bool hasNextRule)
+    [InlineData(false, false)]
+    [InlineData(true, false)]
+    [InlineData(false, true)]
+    [InlineData(true, true)]
+    public async Task 新堆只由未满候选补充_满堆整体交给后续规则(
+        bool hasNextRule, bool fullSource)
     {
         ItemSnapshot first = CollectPlannerTests.Box("first", "@o#1 弹药;") with
         {
@@ -183,17 +316,19 @@ public sealed class StackingTests
                     CollectPlannerTests.Box("second", "@o#2 弹药;"))
                 : CollectPlannerTests.Root(first),
         };
+        // 模拟游戏按当前归属判断兼容，验证新移入堆叠会被后续补充命中。
+        port.CrossContainerOnly = !fullSource;
         port.Add("a-partial", 40);
-        port.Add("b-full", 60);
+        port.Add("b-source", fullSource ? 60 : 40);
 
         OrganizeReport report = await new Organizer(port, new CpSatPacker()).RunAsync();
 
         Assert.Equal("first", port.Owner("a-partial"));
-        Assert.Equal(60, port.Count("a-partial"));
-        Assert.Equal(40, port.Count("b-full"));
-        Assert.Equal(hasNextRule ? "second" : "root", port.Owner("b-full"));
-        Assert.Equal(100, port.Total);
-        Assert.Equal(1, report.Merged);
+        Assert.Equal(fullSource ? 40 : 60, port.Count("a-partial"));
+        Assert.Equal(fullSource ? 60 : 20, port.Count("b-source"));
+        Assert.Equal(hasNextRule ? "second" : "root", port.Owner("b-source"));
+        Assert.Equal(fullSource ? 100 : 80, port.Total);
+        Assert.Equal(fullSource ? 0 : 1, report.Merged);
         Assert.Equal(hasNextRule ? 2 : 1, report.Moved);
         Assert.Empty(report.Failures);
     }
@@ -335,6 +470,8 @@ public sealed class StackingTests
         public string? FailSource { get; set; }
         public int? FailTransferNumber { get; init; }
         public bool RequireFold { get; init; }
+        public bool RejectFullChecks { get; set; }
+        public bool CrossContainerOnly { get; set; }
         private bool _folded;
         public int Total => _stacks.Values.Sum(s => s.Count);
         public IEnumerable<int> Counts => _stacks.Values.Select(s => s.Count);
@@ -376,8 +513,16 @@ public sealed class StackingTests
         public IReadOnlyList<StackSnapshot> ReadStacks(string containerId) =>
             _stacks.Values.Where(s => _owners[s.Id] == containerId).ToArray();
 
-        public bool CanStack(string sourceId, string targetId) =>
-            !Incompatible.Contains(sourceId) && !Incompatible.Contains(targetId);
+        public bool CanStack(string sourceId, string targetId)
+        {
+            if (RejectFullChecks)
+            {
+                Assert.InRange(_stacks[sourceId].Count, 1, 59);
+                Assert.InRange(_stacks[targetId].Count, 1, 59);
+            }
+            return !Incompatible.Contains(sourceId) && !Incompatible.Contains(targetId)
+                && (!CrossContainerOnly || _owners[sourceId] != _owners[targetId]);
+        }
 
         public Task<StackMergeResult> MergeAsync(string sourceId, string targetId)
         {

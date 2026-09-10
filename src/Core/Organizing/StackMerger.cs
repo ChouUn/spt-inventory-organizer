@@ -31,105 +31,101 @@ internal sealed class StackMerger
         Consumed.Clear();
         foreach (ItemSnapshot container in containers)
         {
-            Reload(container.Id, report);
+            report.StackReads++;
+            foreach (StackSnapshot stack in _port.ReadStacks(container.Id))
+                Update(stack, container.Id);
         }
-        // 同箱能完成的合并先做，避免等价空间收益下跨箱转移库存。
-        foreach (IGrouping<string, StackSnapshot> group in _stacks.Values
-            .GroupBy(s => s.TemplateId).ToArray())
+        // 全树只建立一次未满堆索引；先完成同箱合并，再按模板跨层配对。
+        foreach (HashSet<string> ids in _targets.Values.ToArray())
         {
-            foreach (IGrouping<string, StackSnapshot> local in group
-                .GroupBy(s => _owners[s.Id]))
-            {
-                string[] ids = Ordered(local).Select(s => s.Id).ToArray();
-                for (int i = 0; i < ids.Length; i++)
-                {
-                    for (int j = ids.Length - 1; j > i; j--)
-                    {
-                        if (!_stacks.TryGetValue(ids[i], out StackSnapshot? target)
-                            || target.Count >= target.Capacity)
-                        {
-                            break;
-                        }
-                        await TryMergeAsync(ids[j], ids[i], report);
-                    }
-                }
-            }
+            await ExecuteAsync(Plan(ids, false, root.Id, report), root.Id, report);
         }
-        foreach (string template in _templates.Keys.ToArray())
+        foreach (HashSet<string> ids in _templates.Values.ToArray())
         {
-            foreach ((string source, string target) in PlanCross(
-                template, root.Id, report))
-            {
-                string owner = _owners[source];
-                StackMergeResult? result = await TryMergeAsync(source, target, report);
-                if (result?.SourceRemaining == 0 && owner == root.Id
-                    && _owners[target] != root.Id)
-                {
-                    report.Moved++;
-                }
-            }
+            await ExecuteAsync(Plan(ids, true, root.Id, report), root.Id, report);
         }
     }
 
-    /// <summary>
-    /// 先在数量副本上推演跨箱转移。相连的转移链必须释放堆叠或补充 Pinned，
-    /// 才值得执行；例如三堆 40/60 需要两次转移才能释放一格。
-    /// </summary>
-    private IReadOnlyList<(string Source, string Target)> PlanCross(
-        string template, string rootId, OrganizeReport report)
+    /// <summary>仅对未满堆推演，填满目标或耗尽来源后立即移出待配对集合。</summary>
+    private IReadOnlyList<(string Source, string Target)> Plan(
+        IEnumerable<string> ids, bool cross, string rootId, OrganizeReport report)
     {
-        StackSnapshot[] ordered = _templates[template].Select(id => _stacks[id])
-            .Where(s => s.Lock != LockState.Locked && s.Count > 0)
+        var pending = new LinkedList<StackSnapshot>(ids.Select(id => _stacks[id])
             .OrderByDescending(s => s.Lock == LockState.Pinned)
-            .ThenByDescending(s => s.Count)
+            // 可转移的根堆优先补子容器；数量不能反转归属方向。
             .ThenBy(s => _owners[s.Id] == rootId)
-            .ThenBy(s => s.Id, StringComparer.Ordinal).ToArray();
-        var counts = ordered.ToDictionary(s => s.Id, s => s.Count);
+            .ThenByDescending(s => s.Count)
+            .ThenBy(s => s.Id, StringComparer.Ordinal));
         var plan = new List<(string Source, string Target)>();
         var useful = new HashSet<string>();
-        for (int i = 0; i < ordered.Length; i++)
+        while (pending.Last != null)
         {
-            StackSnapshot target = ordered[i];
-            if (counts[target.Id] == 0 || counts[target.Id] >= target.Capacity)
+            StackSnapshot source = pending.Last.Value;
+            pending.RemoveLast();
+            if (source.Lock != LockState.Free) { continue; }
+            LinkedListNode<StackSnapshot>? node = pending.First;
+            while (source.Count > 0 && node != null)
             {
-                continue;
-            }
-            for (int j = ordered.Length - 1;
-                j > i && counts[target.Id] < target.Capacity; j--)
-            {
-                StackSnapshot source = ordered[j];
-                if (source.Lock != LockState.Free || counts[source.Id] == 0
-                    || _owners[source.Id] == _owners[target.Id]
-                    || !CanStack(source.Id, target.Id, report))
+                StackSnapshot target = node.Value;
+                LinkedListNode<StackSnapshot>? next = node.Next;
+                if ((!cross || _owners[source.Id] != _owners[target.Id])
+                    && CanStack(source.Id, target.Id, report))
                 {
-                    continue;
+                    int amount = Math.Min(source.Count, target.Capacity - target.Count);
+                    source = source with { Count = source.Count - amount };
+                    target = target with { Count = target.Count + amount };
+                    plan.Add((source.Id, target.Id));
+                    if (source.Count == 0 || target.Lock == LockState.Pinned)
+                    {
+                        useful.Add(source.Id);
+                        useful.Add(target.Id);
+                    }
+                    if (target.Count == target.Capacity) { pending.Remove(node); }
+                    else { node.Value = target; }
                 }
-                int amount = Math.Min(counts[source.Id],
-                    target.Capacity - counts[target.Id]);
-                counts[source.Id] -= amount;
-                counts[target.Id] += amount;
-                plan.Add((source.Id, target.Id));
-                if (counts[source.Id] == 0 || target.Lock == LockState.Pinned)
-                {
-                    useful.Add(source.Id);
-                    useful.Add(target.Id);
-                }
+                node = next;
             }
         }
-        bool changed;
-        do
+        return cross ? UsefulTransfers(plan, useful) : plan;
+    }
+
+    /// <summary>按连接关系保留能释放占位或补充 Pinned 的整条转移链。</summary>
+    private static IReadOnlyList<(string Source, string Target)> UsefulTransfers(
+        List<(string Source, string Target)> plan, HashSet<string> useful)
+    {
+        var neighbors = new Dictionary<string, List<string>>();
+        foreach ((string source, string target) in plan)
         {
-            changed = false;
-            foreach ((string source, string target) in plan)
-            {
-                if (useful.Contains(source) || useful.Contains(target))
-                {
-                    changed |= useful.Add(source);
-                    changed |= useful.Add(target);
-                }
-            }
-        } while (changed);
+            if (!neighbors.ContainsKey(source))
+                neighbors[source] = new List<string>();
+            if (!neighbors.ContainsKey(target))
+                neighbors[target] = new List<string>();
+            neighbors[source].Add(target);
+            neighbors[target].Add(source);
+        }
+        var pending = new Queue<string>(useful);
+        while (pending.Count > 0)
+        {
+            foreach (string id in neighbors[pending.Dequeue()])
+                if (useful.Add(id)) { pending.Enqueue(id); }
+        }
         return plan.Where(p => useful.Contains(p.Source)).ToArray();
+    }
+
+    private async Task ExecuteAsync(IReadOnlyList<(string Source, string Target)> plan,
+        string rootId, OrganizeReport report)
+    {
+        foreach ((string source, string target) in plan)
+        {
+            if (!_owners.TryGetValue(source, out string? owner)
+                || !_owners.TryGetValue(target, out string? destination)) { continue; }
+            StackMergeResult? result = await TryMergeAsync(source, target, report);
+            if (result?.SourceRemaining == 0
+                && owner == rootId && destination != rootId)
+            {
+                report.Moved++;
+            }
+        }
     }
 
     /// <summary>
@@ -148,8 +144,8 @@ internal sealed class StackMerger
         {
             return false;
         }
-        foreach (StackSnapshot target in Ordered(targets.Select(id => _stacks[id])
-            .Where(s => s.Count < s.Capacity)).ToArray())
+        foreach (StackSnapshot target in Ordered(targets.Select(id => _stacks[id]))
+            .ToArray())
         {
             StackMergeResult? result = await TryMergeAsync(sourceId, target.Id, report);
             if (result is null)
@@ -176,31 +172,21 @@ internal sealed class StackMerger
         {
             return null;
         }
+        string sourceOwner = _owners[source.Id];
+        string targetOwner = _owners[target.Id];
         var stopwatch = Stopwatch.StartNew();
         StackMergeResult result = await _port.MergeAsync(source.Id, target.Id);
         report.MergeMilliseconds += stopwatch.ElapsedMilliseconds;
         if (result.Error != null)
         {
             report.Failures.Add($"合并 {source.Id} -> {target.Id}：{result.Error}");
-            Reload(_owners[source.Id], report);
-            if (_owners[source.Id] != _owners[target.Id])
-            {
-                Reload(_owners[target.Id], report);
-            }
+            Reload(sourceOwner, report);
+            if (sourceOwner != targetOwner) { Reload(targetOwner, report); }
             return null;
         }
-        _stacks[target.Id] = target with { Count = result.TargetCount };
-        if (result.SourceRemaining == 0)
-        {
-            _stacks.Remove(source.Id);
-            _templates[source.TemplateId].Remove(source.Id);
-            _targets[(_owners[source.Id], source.TemplateId)].Remove(source.Id);
-            Consumed.Add(source.Id);
-        }
-        else
-        {
-            _stacks[source.Id] = source with { Count = result.SourceRemaining };
-        }
+        Update(target with { Count = result.TargetCount }, targetOwner);
+        Update(source with { Count = result.SourceRemaining }, sourceOwner);
+        if (result.SourceRemaining == 0) { Consumed.Add(source.Id); }
         if (result.Transferred > 0)
         {
             report.Merged++;
@@ -212,9 +198,7 @@ internal sealed class StackMerger
     {
         if (_stacks.TryGetValue(itemId, out StackSnapshot? stack))
         {
-            _targets[(_owners[itemId], stack.TemplateId)].Remove(itemId);
-            _owners[itemId] = containerId;
-            AddTarget(containerId, stack);
+            Update(stack, containerId);
         }
     }
 
@@ -230,32 +214,37 @@ internal sealed class StackMerger
         foreach (string id in _stacks.Keys.Where(id => _owners[id] == containerId)
             .ToArray())
         {
-            _templates[_stacks[id].TemplateId].Remove(id);
-            _targets[(containerId, _stacks[id].TemplateId)].Remove(id);
-            _stacks.Remove(id);
+            Remove(id);
         }
         report.StackReads++;
         foreach (StackSnapshot stack in _port.ReadStacks(containerId))
-        {
-            _stacks[stack.Id] = stack;
-            _owners[stack.Id] = containerId;
-            if (!_templates.TryGetValue(stack.TemplateId, out HashSet<string>? ids))
-            {
-                _templates.Add(stack.TemplateId, ids = new HashSet<string>());
-            }
-            ids.Add(stack.Id);
-            AddTarget(containerId, stack);
-        }
+            Update(stack, containerId);
     }
 
-    private void AddTarget(string containerId, StackSnapshot stack)
+    /// <summary>所有索引只保留未满且未锁的堆叠，事务结果同步增删。</summary>
+    private void Update(StackSnapshot stack, string containerId)
     {
+        Remove(stack.Id);
+        if (stack.Count <= 0 || stack.Count >= stack.Capacity
+            || stack.Lock == LockState.Locked) { return; }
+        _stacks.Add(stack.Id, stack);
+        _owners.Add(stack.Id, containerId);
+        if (!_templates.TryGetValue(stack.TemplateId, out HashSet<string>? ids))
+            _templates.Add(stack.TemplateId, ids = new HashSet<string>());
+        ids.Add(stack.Id);
         var key = (containerId, stack.TemplateId);
         if (!_targets.TryGetValue(key, out HashSet<string>? targets))
-        {
             _targets.Add(key, targets = new HashSet<string>());
-        }
         targets.Add(stack.Id);
+    }
+
+    private void Remove(string id)
+    {
+        if (!_stacks.TryGetValue(id, out StackSnapshot? stack)) { return; }
+        _templates[stack.TemplateId].Remove(id);
+        _targets[(_owners[id], stack.TemplateId)].Remove(id);
+        _owners.Remove(id);
+        _stacks.Remove(id);
     }
 
     private static IEnumerable<StackSnapshot> Ordered(

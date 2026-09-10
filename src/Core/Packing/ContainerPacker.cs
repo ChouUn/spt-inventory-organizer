@@ -19,17 +19,9 @@ public sealed class ContainerPacker
 
     public ContainerPacker(IPacker single) => _single = single;
 
-    public ContainerPackResult Pack(IReadOnlyList<PackRequest> requests, double seconds)
+    public ContainerPackResult Pack(
+        IReadOnlyList<PackRequest> requests, double seconds)
     {
-        if (requests.Count == 1)
-        {
-            PackResult result = _single.Pack(requests[0], seconds);
-            return new ContainerPackResult(new[] { result })
-            {
-                Diagnostic = result.Diagnostic,
-                Warning = result.Warning,
-            };
-        }
         var elapsed = Stopwatch.StartNew();
         var used = new HashSet<string>();
         var grids = new List<PackResult>();
@@ -39,7 +31,7 @@ public sealed class ContainerPacker
             {
                 Items = request.Items.Where(i => !used.Contains(i.Id)).ToArray(),
             };
-            PackResult result = _single.Pack(rest, 0);
+            PackResult result = Baseline(rest);
             var placed = new HashSet<string>(result.Placements.Select(p => p.Id));
             grids.Add(result with
             {
@@ -48,6 +40,16 @@ public sealed class ContainerPacker
             used.UnionWith(result.Placements.Select(p => p.Id));
         }
         var baseline = new ContainerPackResult(grids);
+        int area = Area(requests, baseline);
+        long upper = AreaUpperBound(requests);
+        if (!grids.Any(g => g.Unplaced.Any(i => i.Required)) && area == upper)
+        {
+            return baseline with
+            {
+                Diagnostic = $"collection skip=area-bound; objective=area; "
+                    + $"area={area}, upper={upper}, grids={requests.Count}",
+            };
+        }
         double remaining = seconds - elapsed.Elapsed.TotalSeconds;
         if ((_single is not CpSatPacker && _single is not CachedPacker)
             || remaining <= 0)
@@ -56,21 +58,16 @@ public sealed class ContainerPacker
         }
         try
         {
-            string status;
-            ContainerPackResult? solved = CategoryPacking.HasCategories(requests)
-                ? CategoryPackingModel.Solve(requests, baseline, remaining, out status)
-                : MultiGridModel.Solve(requests, baseline, remaining, out status);
+            ContainerPackResult? solved = MultiGridModel.Solve(
+                requests, baseline, remaining, out string status);
             ContainerPackResult best = solved != null
                 && Better(requests, solved, baseline)
                 ? solved : baseline;
             return best with
             {
-                Diagnostic = $"multi-grid cp-sat {status}, " +
-                    $"{elapsed.ElapsedMilliseconds} ms, grids={requests.Count}, " +
-                    $"area {Area(requests, baseline)}->{Area(requests, best)}, " +
-                    $"movable-rows-sum {Height(requests, baseline)}" +
-                    $"->{Height(requests, best)}, " +
-                    $"category-span {Span(requests, baseline)}->{Span(requests, best)}",
+                Diagnostic = $"collection cp-sat {status}; objective=area; "
+                    + $"{elapsed.ElapsedMilliseconds} ms, grids={requests.Count}, "
+                    + $"area {area}->{Area(requests, best)}, upper={upper}",
             };
         }
         catch (Exception ex) when (ex is DllNotFoundException
@@ -93,18 +90,44 @@ public sealed class ContainerPacker
         {
             return false;
         }
-        int difference = Area(requests, next) - Area(requests, before);
-        return difference > 0 || (difference == 0
-            && (Height(requests, next) < Height(requests, before)
-                || (Height(requests, next) == Height(requests, before)
-                    && CategoryPacking.Compare(requests, next, before) < 0)));
+        return before.Grids.Any(g => g.Unplaced.Any(i => i.Required))
+            || Area(requests, next) > Area(requests, before);
     }
 
-    private static string Span(
-        IReadOnlyList<PackRequest> requests, ContainerPackResult result) =>
-        "[" + string.Join(",", Enumerable.Range(0, requests.Max(CategoryPacking.Depth))
-            .Select(d => requests.Select((r, i) =>
-                CategoryPacking.Span(r, result.Grids[i], d)).Sum())) + "]";
+    /// <summary>先原位填空；只有能多收物品时才采用重排，不比较高度或类别。</summary>
+    private PackResult Baseline(PackRequest request)
+    {
+        IPacker heuristic = _single is CpSatPacker || _single is CachedPacker
+            ? new HeuristicPacker() : _single;
+        var current = new HashSet<string>(request.Current.Select(p => p.Id));
+        PackResult fill = heuristic.Pack(request with
+        {
+            Fixed = request.Fixed.Concat(CpSatPacker.Blocks(request, request.Current))
+                .ToArray(),
+            Items = request.Items.Where(i => !current.Contains(i.Id)).ToArray(),
+        }, 0);
+        var preserved = new PackResult(request.Current.Concat(fill.Placements)
+            .ToArray(), fill.Unplaced);
+        if (!preserved.Unplaced.Any(i => i.Required)
+            && CpSatPacker.Area(request, preserved)
+                == AreaUpperBound(new[] { request }))
+        {
+            return preserved;
+        }
+        PackResult fresh = heuristic.Pack(request, 0);
+        return !fresh.Unplaced.Any(i => i.Required)
+            && (preserved.Unplaced.Any(i => i.Required)
+                || CpSatPacker.Area(request, fresh)
+                    > CpSatPacker.Area(request, preserved))
+            ? fresh : preserved;
+    }
+
+    /// <summary>候选按身份去重，容量扣除固定障碍；上界不使用高度或类别。</summary>
+    internal static long AreaUpperBound(IReadOnlyList<PackRequest> requests) =>
+        Math.Min(requests.SelectMany(r => r.Items).GroupBy(i => i.Id)
+            .Sum(g => (long)g.First().Width * g.First().Height),
+            requests.Sum(r => Math.Min(CpSatPacker.AvailableCells(r)[r.Height],
+                r.Items.Sum(i => (long)i.Width * i.Height))));
 
     internal static int Area(
         IReadOnlyList<PackRequest> requests, ContainerPackResult result) =>

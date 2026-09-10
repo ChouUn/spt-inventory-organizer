@@ -49,7 +49,7 @@ public sealed class HierarchyPackingTests
     }
 
     [Fact]
-    public void 多网格共同按父层优先_浅分类不会被重复计入更深层()
+    public void 收纳多网格面积已满_不为父层聚合改变布局()
     {
         var request = new PackRequest(2, 2, Array.Empty<FixedBlock>(), new[]
         {
@@ -62,9 +62,9 @@ public sealed class HierarchyPackingTests
         ContainerPackResult result = new ContainerPacker(new CpSatPacker())
             .Pack(new[] { request, shallow }, 1);
 
-        Assert.Equal(new[] { 0, 0 }, CategoryPacking.Spans(request, result.Grids[0]));
+        Assert.Equal(new[] { 2, 0 }, CategoryPacking.Spans(request, result.Grids[0]));
         Assert.Equal(new[] { 0 }, CategoryPacking.Spans(shallow, result.Grids[1]));
-        Assert.Contains("Optimal", result.Diagnostic);
+        Assert.Contains("skip=area-bound", result.Diagnostic);
     }
 
     [Fact]

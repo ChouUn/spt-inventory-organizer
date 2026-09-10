@@ -16,7 +16,6 @@ internal static class MultiGridModel
         var elapsed = Stopwatch.StartNew();
         var model = new CpModel();
         var rectangles = new List<(int Grid, CpSatModel.Rectangle Rect)>();
-        var tops = new List<IntVar>();
         var areas = new List<LinearExpr>();
         var singleGroups = Singles(requests);
         var counts = new Dictionary<(int Grid, int Group), IntVar>();
@@ -31,8 +30,7 @@ internal static class MultiGridModel
                     model.NewFixedSizeIntervalVar(
                         LinearExpr.Constant(block.Y), block.Height, "fixed-y"));
             }
-            IntVar top = model.NewIntVar(0, request.Height, "top-" + grid);
-            tops.Add(top);
+            IntVar top = model.NewConstant(request.Height);
             var terms = new List<LinearExpr>();
             var hints = baseline.Grids[grid].Placements.ToDictionary(p => p.Id);
             foreach (PackItem item in request.Items
@@ -65,11 +63,7 @@ internal static class MultiGridModel
             }
             LinearExpr area = LinearExpr.Sum(terms);
             areas.Add(area);
-            IntVar available = model.NewIntVar(0,
-                request.Width * request.Height, "available");
-            model.AddElement(top, CpSatPacker.AvailableCells(request), available);
-            model.Add(area <= available);
-            model.AddHint(top, CpSatPacker.Height(request, baseline.Grids[grid]));
+            model.Add(area <= CpSatPacker.AvailableCells(request)[request.Height]);
         }
         foreach (var item in rectangles.GroupBy(r => r.Rect.Item.Id))
         {
@@ -88,8 +82,8 @@ internal static class MultiGridModel
         }
         LinearExpr allArea = LinearExpr.Sum(areas);
         model.Add(allArea >= ContainerPacker.Area(requests, baseline));
-        model.Maximize(allArea * (requests.Sum(r => r.Height) + 1)
-            - LinearExpr.Sum(tops));
+        model.Add(allArea <= ContainerPacker.AreaUpperBound(requests));
+        model.Maximize(allArea);
         double remaining = seconds - elapsed.Elapsed.TotalSeconds;
         if (remaining <= 0)
         {
@@ -129,7 +123,7 @@ internal static class MultiGridModel
                     offsets[group] += count;
                 }
             }
-            var fill = new PackRequest(request.Width, (int)solver.Value(tops[grid]),
+            var fill = new PackRequest(request.Width, request.Height,
                 request.Fixed.Concat(CpSatPacker.Blocks(request, large)).ToArray(),
                 singles);
             Placement[] placements = large.Concat(

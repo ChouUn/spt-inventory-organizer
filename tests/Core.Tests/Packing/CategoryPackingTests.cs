@@ -201,7 +201,7 @@ public sealed class CategoryPackingTests
     }
 
     [Fact]
-    public void 多网格在同等面积高度下聚合_可选类别缺席时跨度为零()
+    public void 收纳不为聚合改动同面积布局_可选类别缺席时跨度为零()
     {
         PackRequest first = Alternating();
         PackRequest second = new(1, 1, Array.Empty<FixedBlock>(), new[]
@@ -213,7 +213,7 @@ public sealed class CategoryPackingTests
         ContainerPackResult result = new ContainerPacker(new CpSatPacker())
             .Pack(requests, 1);
 
-        Assert.Equal(2, CategoryPacking.Span(first, result.Grids[0]));
+        Assert.Equal(4, CategoryPacking.Span(first, result.Grids[0]));
         Assert.Equal(0, CategoryPacking.Span(second, result.Grids[1]));
         Assert.Empty(result.Grids[1].Placements);
         for (int i = 0; i < requests.Length; i++)

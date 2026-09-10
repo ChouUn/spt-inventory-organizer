@@ -2,7 +2,7 @@
 
 > Parent: [../index.md](../index.md)
 > Status: 实现与离线验证完成，待游戏内验收（2026-09-10）
-> 依据：[排布契约](../feats/packing.md)
+> 依据：[排布契约](../feats/packing.md)、[性能调研](../reports/organize-performance.md)
 
 ## 目标与范围
 

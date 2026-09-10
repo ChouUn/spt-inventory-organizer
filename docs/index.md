@@ -21,3 +21,7 @@ SPT 一键整理仓库 mod 的项目文档。
   SPT 4.1 客户端里可折叠、Pin/Lock 与原生排序的判定来源
 - [reports/cpsat-runtime-feasibility.md](reports/cpsat-runtime-feasibility.md)：
   CP-SAT / OR-Tools 能否在客户端或服务端运行，规模实验与替代方案
+- [reports/organize-performance.md](reports/organize-performance.md)：
+  层级聚合里程碑的真实耗时、固定快照预算对照与优化方向
+- [reports/grid-budget-profile.md](reports/grid-budget-profile.md)：
+  当前按网格计分实现的阶段耗时、搜索进展与缩短预算实验

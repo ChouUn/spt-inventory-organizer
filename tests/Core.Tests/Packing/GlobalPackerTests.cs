@@ -50,6 +50,8 @@ public sealed class GlobalPackerTests
             Rename(ActualStashTests.Read("hierarchy-junk.csv", 14, 14), "junk"),
         };
         var packer = new CachedPacker(new CpSatPacker());
+        ContainerPackResult baseline = new GlobalPacker(new CpSatPacker())
+            .Pack(requests, 0);
         var clock = Stopwatch.StartNew();
         ContainerPackResult result = packer.PackAll(requests, 2.6);
         _output.WriteLine($"{clock.ElapsedMilliseconds}ms {result.Diagnostic}");
@@ -65,7 +67,10 @@ public sealed class GlobalPackerTests
         Assert.Contains("block=grid-sum", result.Diagnostic);
         Assert.Equal(61, CpSatPacker.Height(requests[0], result.Grids[0]));
         Assert.True(CategoryPacking.Span(requests[0], result.Grids[0]) <= 59);
-        Assert.True(CategoryPacking.Span(requests[1], result.Grids[1]) <= 8);
+        // 停滞退出可能早于后续改善，限时结果须保持完整分数不退步。
+        Assert.True(CategoryPacking.Compare(requests, result, baseline) <= 0);
+        Assert.Contains("stop=stagnation", result.Diagnostic);
+        Assert.True(clock.Elapsed.TotalSeconds < 2);
         ContainerPackResult again = packer.PackAll(requests.Select((r, i) => r with
             { Current = result.Grids[i].Placements }).ToArray(), 2.6);
         Assert.Equal("global skip=unchanged-input", again.Diagnostic);

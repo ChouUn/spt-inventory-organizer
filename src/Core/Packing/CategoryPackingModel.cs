@@ -122,6 +122,9 @@ internal static class CategoryPackingModel
             return baseline;
         }
         using var solver = new CpSolver();
+        using var progress = new PackingProgress(requests, baseline,
+            callback => ReadResult(variable => callback.Value(variable)),
+            solver.StopSearch);
         bool hasSolution = false;
         status = "Optimal";
         for (int stage = 0; stage < blocks.Count; stage++)
@@ -141,17 +144,25 @@ internal static class CategoryPackingModel
             solver.StringParameters = "max_time_in_seconds:"
                 + remaining.ToString("R", CultureInfo.InvariantCulture)
                 + ",num_workers:1,random_seed:0";
-            CpSolverStatus solved = solver.Solve(model);
+            CpSolverStatus solved;
+            try
+            {
+                solved = solver.Solve(model, progress.Callback);
+            }
+            finally
+            {
+                progress.EndSearch();
+            }
             diagnostics.Add($"block={block.Label}:{solved}:"
                 + $"{stageClock.ElapsedMilliseconds}ms");
             status = solved.ToString() + "; objective=grid-sum; "
-                + string.Join("; ", diagnostics) + "; " + string.Join("; ", details);
+                + string.Join("; ", diagnostics) + "; " + progress.Diagnostic
+                + "; " + string.Join("; ", details);
             if (solved != CpSolverStatus.Optimal && solved != CpSolverStatus.Feasible)
             {
-                return hasSolution ? baseline : null;
+                return hasSolution ? progress.Best : null;
             }
             hasSolution = true;
-            baseline = ReadResult();
             // 下一阶段沿用刚求出的完整可行解，不重新猜测物品位置。
             model.ClearHints();
             model.Model.SolutionHint = new PartialVariableAssignment();
@@ -162,23 +173,23 @@ internal static class CategoryPackingModel
                 model.Model.SolutionHint.Vars.Add(variable);
                 model.Model.SolutionHint.Values.Add(response.Solution[variable]);
             }
-            if (solved != CpSolverStatus.Optimal)
+            if (solved != CpSolverStatus.Optimal || progress.Stopped)
             {
                 break;
             }
             model.Add(objective == solver.Value(objective));
         }
-        return hasSolution ? baseline : null;
+        return hasSolution ? progress.Best : null;
 
-        ContainerPackResult ReadResult()
+        ContainerPackResult ReadResult(Func<IntVar, long> value)
         {
             var results = new List<PackResult>();
             for (int grid = 0; grid < requests.Count; grid++)
             {
                 Placement[] placements = grids[grid]
-                    .Where(r => solver.BooleanValue(r.Present))
-                    .Select(r => new Placement(r.Item.Id, (int)solver.Value(r.X),
-                        (int)solver.Value(r.Y), solver.BooleanValue(r.Rotated)))
+                    .Where(r => value(r.Present) != 0)
+                    .Select(r => new Placement(r.Item.Id, (int)value(r.X),
+                        (int)value(r.Y), value(r.Rotated) != 0))
                     .ToArray();
                 var ids = new HashSet<string>(placements.Select(p => p.Id));
                 results.Add(new PackResult(placements,

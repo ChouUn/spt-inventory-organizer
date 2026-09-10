@@ -6,9 +6,10 @@ SPT 一键整理仓库 mod 的项目文档。
 - [arch.md](arch.md)：总体设计，模块边界、依赖方向与核心数据流
 - [feats/tag-grammar.md](feats/tag-grammar.md)：tag 规则语法契约
 - [feats/packing.md](feats/packing.md)：排布目标、收纳空间选择、锁与求解预算
+- [feats/stacking.md](feats/stacking.md)：统一堆叠、跨容器归属与失败处理
 - [plans/mvp.md](plans/mvp.md)：MVP 实施计划
 - [plans/collection-optimization.md](plans/collection-optimization.md)：
-  多网格收纳、阶段预算与堆叠规划优化草稿
+  多网格收纳、阶段预算与堆叠规划优化实施进度
 
 ## 调研报告
 

@@ -21,10 +21,11 @@ public sealed record GridPackJob(
 /// </summary>
 public static class PackPlanner
 {
-    public static IReadOnlyList<GridPackJob> Plan(ItemSnapshot root)
+    public static IReadOnlyList<GridPackJob> Plan(ItemSnapshot root,
+        System.Func<string, Tags.TagParseResult>? parse = null)
     {
         var jobs = new List<GridPackJob>();
-        foreach (ItemSnapshot container in OrganizeScope.Containers(root))
+        foreach (ItemSnapshot container in OrganizeScope.Containers(root, parse))
         {
             AddContainer(container, jobs);
         }

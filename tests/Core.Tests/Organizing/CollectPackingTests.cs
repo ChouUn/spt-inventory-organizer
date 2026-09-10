@@ -14,6 +14,73 @@ namespace ChouUn.InventoryOrganizer.Core.Tests.Organizing;
 public sealed class CollectPackingTests
 {
     [Fact]
+    public async Task 联合收纳落入正确网格_原有物品与数量保留()
+    {
+        var port = new PackingPort();
+        port.Box("box", 3, 3, "@o 物品;");
+        port.AddGrid("box", 2, 2);
+        port.Item("square", 2, 2);
+        port.Item("bar1", 1, 3);
+        port.Item("bar2", 1, 3);
+        port.Item("bar3", 1, 3);
+
+        OrganizeReport report = await Run(port);
+
+        Assert.Equal(4, report.Moved);
+        Assert.Equal(1, port.GridOf("square"));
+        Assert.All(new[] { "bar1", "bar2", "bar3" }, id =>
+            Assert.Equal(0, port.GridOf(id)));
+        Assert.Equal(4, port.Contents("box").Count);
+        Assert.Empty(report.Failures);
+        port.AssertValid();
+    }
+
+    [Fact]
+    public async Task 联合布局一个网格腾位失败_另一个成功_余量继续后续规则()
+    {
+        var port = new PackingPort { FailingArrange = "first", FailingGrid = 0 };
+        port.Box("first", 4, 4, "@o#1 物品;");
+        port.AddGrid("first", 1, 1);
+        port.Box("second", 1, 4, "@o#2 物品;");
+        port.Item("large", 2, 3, "first", 0, 0);
+        port.Item("square", 2, 2, "first", 2, 2);
+        port.Item("bar", 1, 4);
+        port.Item("single", 1, 1);
+        port.GridDenied.Add(("single", "first", 0));
+
+        OrganizeReport report = await Run(port);
+
+        Assert.Equal("second", port.Owner("bar"));
+        Assert.Equal("first", port.Owner("single"));
+        Assert.Equal(1, port.GridOf("single"));
+        Assert.DoesNotContain("move bar -> first", port.Events);
+        Assert.NotEmpty(report.Failures);
+        port.AssertValid();
+    }
+
+    [Theory]
+    [InlineData(1)]
+    [InlineData(20)]
+    public async Task 规则增加不重复读取全树或堆叠(int ruleCount)
+    {
+        var port = new PackingPort();
+        port.Box("box", 1, 1, string.Join(" ",
+            Enumerable.Repeat("@o 物品;", ruleCount)));
+        port.Item("item", 1, 1);
+        port.Denied.Add("item");
+
+        OrganizeReport report = await Run(port);
+
+        Assert.Equal(4, port.SnapshotReads);
+        Assert.Equal(2, port.StackReads);
+        Assert.Equal(port.SnapshotReads, report.SnapshotReads);
+        Assert.Equal(port.StackReads, report.StackReads);
+        Assert.Equal(1, report.RuleMatches);
+        Assert.Equal("root", port.Owner("item"));
+        Assert.Empty(report.Failures);
+    }
+
+    [Fact]
     public async Task 收纳前重排碎片空位_原有物品保留_候选全部移入()
     {
         var port = new PackingPort();
@@ -167,9 +234,15 @@ public sealed class CollectPackingTests
     {
         private readonly Dictionary<string, ItemSnapshot> _items = new();
         private readonly Dictionary<string, string> _owners = new();
+        private readonly Dictionary<string, int> _grids = new();
         public List<string> Events { get; } = new();
         public HashSet<string> Denied { get; } = new();
+        public HashSet<(string Item, string Container, int Grid)> GridDenied { get; }
+            = new();
+        public int SnapshotReads { get; private set; }
+        public int StackReads { get; private set; }
         public string? FailingArrange { get; init; }
+        public int? FailingGrid { get; init; }
         public string? FailingMove { get; init; }
         public string MoveError { get; init; } = "模拟拒绝";
         public int MoveAttempts { get; private set; }
@@ -186,7 +259,21 @@ public sealed class CollectPackingTests
                 Lock = LockState.Pinned,
             });
             _owners.Add(id, "root");
+            _grids.Add(id, 0);
         }
+
+        public void AddGrid(string container, int width, int height)
+        {
+            ItemSnapshot item = _items[container];
+            _items[container] = item with
+            {
+                Grids = item.Grids.Concat(new[] { new GridSnapshot(
+                    item.Grids.Count, width, height, Array.Empty<ItemSnapshot>()) })
+                    .ToArray(),
+            };
+        }
+
+        public int GridOf(string item) => _grids[item];
 
         public void Item(string id, int width, int height, string owner = "root",
             int x = 0, int y = 0, LockState state = LockState.Free)
@@ -204,24 +291,31 @@ public sealed class CollectPackingTests
                 Position = new GridPosition(x, y, false),
             });
             _owners.Add(id, owner);
+            _grids.Add(id, 0);
         }
 
         public string Owner(string id) => _owners[id];
         public GridPosition Position(string id) => _items[id].Position!;
         public List<string> Contents(string id) =>
             _owners.Where(p => p.Value == id).Select(p => p.Key).ToList();
-        public ItemSnapshot ReadSnapshot() => Build("root");
+        public ItemSnapshot ReadSnapshot()
+        {
+            SnapshotReads++;
+            return Build("root");
+        }
 
         private ItemSnapshot Build(string id) => _items[id] with
         {
             Grids = _items[id].Grids.Select(g => g with
             {
-                Items = Contents(id).Select(Build).ToArray(),
+                Items = Contents(id).Where(i => _grids[i] == g.Index)
+                    .Select(Build).ToArray(),
             }).ToArray(),
         };
 
         public bool CanMoveToGrid(string itemId, string containerId, int gridIndex) =>
-            !Denied.Contains(itemId);
+            !Denied.Contains(itemId) && !GridDenied.Contains(
+                (itemId, containerId, gridIndex));
 
         public Task<PortResult> MoveToAsync(
             string containerId, int gridIndex, Placement placement)
@@ -234,6 +328,7 @@ public sealed class CollectPackingTests
                 return Task.FromResult(PortResult.Fail(MoveError));
             }
             _owners[placement.Id] = containerId;
+            _grids[placement.Id] = gridIndex;
             SetPosition(placement);
             AssertValid();
             Events.Add($"move {placement.Id} -> {containerId}");
@@ -243,13 +338,15 @@ public sealed class CollectPackingTests
         public Task<PortResult> ArrangeAsync(
             string containerId, int gridIndex, IReadOnlyList<Placement> placements)
         {
-            if (containerId == FailingArrange)
+            if (containerId == FailingArrange
+                && (FailingGrid == null || FailingGrid == gridIndex))
             {
                 return Task.FromResult(PortResult.Fail("模拟失败"));
             }
             foreach (Placement placement in placements)
             {
                 Assert.Equal(containerId, Owner(placement.Id));
+                Assert.Equal(gridIndex, _grids[placement.Id]);
                 Assert.Equal(LockState.Free, _items[placement.Id].Lock);
                 SetPosition(placement);
             }
@@ -265,10 +362,9 @@ public sealed class CollectPackingTests
 
         public void AssertValid()
         {
-            foreach (ItemSnapshot container in _items.Values
-                .Where(i => i.Grids.Count > 0))
+            foreach (GridSnapshot grid in _items.Values
+                .Where(i => i.Grids.Count > 0).SelectMany(i => Build(i.Id).Grids))
             {
-                GridSnapshot grid = Build(container.Id).Grids[0];
                 var request = new PackRequest(grid.Width, grid.Height,
                     Array.Empty<FixedBlock>(), grid.Items.Select(i =>
                         new PackItem(i.Id, i.TemplateId, i.Width, i.Height)).ToArray());
@@ -279,8 +375,11 @@ public sealed class CollectPackingTests
             }
         }
 
-        public IReadOnlyList<StackSnapshot> ReadStacks(string containerId) =>
-            Array.Empty<StackSnapshot>();
+        public IReadOnlyList<StackSnapshot> ReadStacks(string containerId)
+        {
+            StackReads++;
+            return Array.Empty<StackSnapshot>();
+        }
         public bool CanStack(string sourceId, string targetId) => false;
         public Task<StackMergeResult> MergeAsync(string sourceId, string targetId) =>
             throw new InvalidOperationException("测试没有堆叠");

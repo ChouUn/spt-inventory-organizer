@@ -7,55 +7,151 @@ using ChouUn.InventoryOrganizer.Core.Inventory;
 
 namespace ChouUn.InventoryOrganizer.Core.Organizing;
 
-/// <summary>压实容器内堆叠，并在按规则收纳时补充目标堆叠；游戏决定能否合并。</summary>
+/// <summary>统一堆叠与收纳补充共用索引，游戏决定兼容性和实际转移量。</summary>
 internal sealed class StackMerger
 {
     private readonly IInventoryPort _port;
+    private readonly Dictionary<string, StackSnapshot> _stacks = new();
+    private readonly Dictionary<string, string> _owners = new();
+    private readonly Dictionary<string, HashSet<string>> _templates = new();
+    private readonly Dictionary<(string Container, string Template), HashSet<string>>
+        _targets = new();
+    public HashSet<string> Consumed { get; } = new();
 
     public StackMerger(IInventoryPort port) => _port = port;
 
-    public async Task MergeContainersAsync(ItemSnapshot root, OrganizeReport report)
+    public async Task MergeContainersAsync(ItemSnapshot root, OrganizeReport report,
+        Func<string, Tags.TagParseResult>? parse = null)
     {
-        foreach (ItemSnapshot container in OrganizeScope.Containers(root))
+        ItemSnapshot[] containers = OrganizeScope.Containers(root, parse).ToArray();
+        _stacks.Clear();
+        _owners.Clear();
+        _templates.Clear();
+        _targets.Clear();
+        Consumed.Clear();
+        foreach (ItemSnapshot container in containers)
         {
-            StackSnapshot[] stacks = Ordered(_port.ReadStacks(container.Id)).ToArray();
-            for (int i = 0; i < stacks.Length; i++)
+            Reload(container.Id, report);
+        }
+        // 同箱能完成的合并先做，避免等价空间收益下跨箱转移库存。
+        foreach (IGrouping<string, StackSnapshot> group in _stacks.Values
+            .GroupBy(s => s.TemplateId).ToArray())
+        {
+            foreach (IGrouping<string, StackSnapshot> local in group
+                .GroupBy(s => _owners[s.Id]))
             {
-                // 只向前补充：Pinned 优先，其余大堆优先；从后方小堆取出以释放格子。
-                // 不反向补充，避免剩余的小堆再次抽空刚补满的堆叠。
-                for (int j = stacks.Length - 1;
-                     j > i && stacks[i].Count > 0
-                         && stacks[i].Count < stacks[i].Capacity;
-                     j--)
+                string[] ids = Ordered(local).Select(s => s.Id).ToArray();
+                for (int i = 0; i < ids.Length; i++)
                 {
-                    StackMergeResult? result = await TryMergeAsync(
-                        stacks[j], stacks[i], report);
-                    if (result != null)
+                    for (int j = ids.Length - 1; j > i; j--)
                     {
-                        stacks[j] = stacks[j] with { Count = result.SourceRemaining };
-                        stacks[i] = stacks[i] with { Count = result.TargetCount };
+                        if (!_stacks.TryGetValue(ids[i], out StackSnapshot? target)
+                            || target.Count >= target.Capacity)
+                        {
+                            break;
+                        }
+                        await TryMergeAsync(ids[j], ids[i], report);
                     }
+                }
+            }
+        }
+        foreach (string template in _templates.Keys.ToArray())
+        {
+            foreach ((string source, string target) in PlanCross(
+                template, root.Id, report))
+            {
+                string owner = _owners[source];
+                StackMergeResult? result = await TryMergeAsync(source, target, report);
+                if (result?.SourceRemaining == 0 && owner == root.Id
+                    && _owners[target] != root.Id)
+                {
+                    report.Moved++;
                 }
             }
         }
     }
 
     /// <summary>
+    /// 先在数量副本上推演跨箱转移。相连的转移链必须释放堆叠或补充 Pinned，
+    /// 才值得执行；例如三堆 40/60 需要两次转移才能释放一格。
+    /// </summary>
+    private IReadOnlyList<(string Source, string Target)> PlanCross(
+        string template, string rootId, OrganizeReport report)
+    {
+        StackSnapshot[] ordered = _templates[template].Select(id => _stacks[id])
+            .Where(s => s.Lock != LockState.Locked && s.Count > 0)
+            .OrderByDescending(s => s.Lock == LockState.Pinned)
+            .ThenByDescending(s => s.Count)
+            .ThenBy(s => _owners[s.Id] == rootId)
+            .ThenBy(s => s.Id, StringComparer.Ordinal).ToArray();
+        var counts = ordered.ToDictionary(s => s.Id, s => s.Count);
+        var plan = new List<(string Source, string Target)>();
+        var useful = new HashSet<string>();
+        for (int i = 0; i < ordered.Length; i++)
+        {
+            StackSnapshot target = ordered[i];
+            if (counts[target.Id] == 0 || counts[target.Id] >= target.Capacity)
+            {
+                continue;
+            }
+            for (int j = ordered.Length - 1;
+                j > i && counts[target.Id] < target.Capacity; j--)
+            {
+                StackSnapshot source = ordered[j];
+                if (source.Lock != LockState.Free || counts[source.Id] == 0
+                    || _owners[source.Id] == _owners[target.Id]
+                    || !CanStack(source.Id, target.Id, report))
+                {
+                    continue;
+                }
+                int amount = Math.Min(counts[source.Id],
+                    target.Capacity - counts[target.Id]);
+                counts[source.Id] -= amount;
+                counts[target.Id] += amount;
+                plan.Add((source.Id, target.Id));
+                if (counts[source.Id] == 0 || target.Lock == LockState.Pinned)
+                {
+                    useful.Add(source.Id);
+                    useful.Add(target.Id);
+                }
+            }
+        }
+        bool changed;
+        do
+        {
+            changed = false;
+            foreach ((string source, string target) in plan)
+            {
+                if (useful.Contains(source) || useful.Contains(target))
+                {
+                    changed |= useful.Add(source);
+                    changed |= useful.Add(target);
+                }
+            }
+        } while (changed);
+        return plan.Where(p => useful.Contains(p.Source)).ToArray();
+    }
+
+    /// <summary>
     /// 匹配 tag 后才调用，返回来源是否已全部合入目标容器。
-    /// 每次读取直属堆叠，纳入前一条规则的部分补充和刚移动进来的新堆叠。
+    /// 索引按事务结果更新，纳入部分补充和刚移入的新堆叠。
     /// </summary>
     public async Task<bool> TopUpAsync(
-        string rootId, string sourceId, string containerId, OrganizeReport report)
+        string sourceId, string containerId, OrganizeReport report)
     {
-        StackSnapshot? source = _port.ReadStacks(rootId)
-            .FirstOrDefault(s => s.Id == sourceId);
-        if (source is null)
+        if (!_stacks.TryGetValue(sourceId, out StackSnapshot? source))
         {
             return false;
         }
-        foreach (StackSnapshot target in Ordered(_port.ReadStacks(containerId)))
+        if (!_targets.TryGetValue((containerId, source.TemplateId),
+            out HashSet<string>? targets))
         {
-            StackMergeResult? result = await TryMergeAsync(source, target, report);
+            return false;
+        }
+        foreach (StackSnapshot target in Ordered(targets.Select(id => _stacks[id])
+            .Where(s => s.Count < s.Capacity)).ToArray())
+        {
+            StackMergeResult? result = await TryMergeAsync(sourceId, target.Id, report);
             if (result is null)
             {
                 continue;
@@ -64,18 +160,19 @@ internal sealed class StackMerger
             {
                 return true;
             }
-            source = source with { Count = result.SourceRemaining };
         }
         return false;
     }
 
     private async Task<StackMergeResult?> TryMergeAsync(
-        StackSnapshot source, StackSnapshot target, OrganizeReport report)
+        string sourceId, string targetId, OrganizeReport report)
     {
-        if (source.Lock != LockState.Free || source.Count <= 0
+        if (!_stacks.TryGetValue(sourceId, out StackSnapshot? source)
+            || !_stacks.TryGetValue(targetId, out StackSnapshot? target)
+            || source.Lock != LockState.Free || source.Count <= 0
             || target.Lock == LockState.Locked || target.Count >= target.Capacity
             || source.TemplateId != target.TemplateId || source.Id == target.Id
-            || !_port.CanStack(source.Id, target.Id))
+            || !CanStack(source.Id, target.Id, report))
         {
             return null;
         }
@@ -85,7 +182,24 @@ internal sealed class StackMerger
         if (result.Error != null)
         {
             report.Failures.Add($"合并 {source.Id} -> {target.Id}：{result.Error}");
+            Reload(_owners[source.Id], report);
+            if (_owners[source.Id] != _owners[target.Id])
+            {
+                Reload(_owners[target.Id], report);
+            }
             return null;
+        }
+        _stacks[target.Id] = target with { Count = result.TargetCount };
+        if (result.SourceRemaining == 0)
+        {
+            _stacks.Remove(source.Id);
+            _templates[source.TemplateId].Remove(source.Id);
+            _targets[(_owners[source.Id], source.TemplateId)].Remove(source.Id);
+            Consumed.Add(source.Id);
+        }
+        else
+        {
+            _stacks[source.Id] = source with { Count = result.SourceRemaining };
         }
         if (result.Transferred > 0)
         {
@@ -94,8 +208,58 @@ internal sealed class StackMerger
         return result;
     }
 
+    public void Moved(string itemId, string containerId)
+    {
+        if (_stacks.TryGetValue(itemId, out StackSnapshot? stack))
+        {
+            _targets[(_owners[itemId], stack.TemplateId)].Remove(itemId);
+            _owners[itemId] = containerId;
+            AddTarget(containerId, stack);
+        }
+    }
+
+    private bool CanStack(string source, string target, OrganizeReport report)
+    {
+        report.StackChecks++;
+        return _port.CanStack(source, target);
+    }
+
+    /// <summary>初始化或失败后校准单个容器，正常事务不重复扫描游戏物品。</summary>
+    private void Reload(string containerId, OrganizeReport report)
+    {
+        foreach (string id in _stacks.Keys.Where(id => _owners[id] == containerId)
+            .ToArray())
+        {
+            _templates[_stacks[id].TemplateId].Remove(id);
+            _targets[(containerId, _stacks[id].TemplateId)].Remove(id);
+            _stacks.Remove(id);
+        }
+        report.StackReads++;
+        foreach (StackSnapshot stack in _port.ReadStacks(containerId))
+        {
+            _stacks[stack.Id] = stack;
+            _owners[stack.Id] = containerId;
+            if (!_templates.TryGetValue(stack.TemplateId, out HashSet<string>? ids))
+            {
+                _templates.Add(stack.TemplateId, ids = new HashSet<string>());
+            }
+            ids.Add(stack.Id);
+            AddTarget(containerId, stack);
+        }
+    }
+
+    private void AddTarget(string containerId, StackSnapshot stack)
+    {
+        var key = (containerId, stack.TemplateId);
+        if (!_targets.TryGetValue(key, out HashSet<string>? targets))
+        {
+            _targets.Add(key, targets = new HashSet<string>());
+        }
+        targets.Add(stack.Id);
+    }
+
     private static IEnumerable<StackSnapshot> Ordered(
-        IReadOnlyList<StackSnapshot> stacks)
+        IEnumerable<StackSnapshot> stacks)
     {
         return stacks.Where(s => s.Lock != LockState.Locked && s.Count > 0)
             .OrderByDescending(s => s.Lock == LockState.Pinned)

@@ -19,7 +19,8 @@ public static class CollectPlanner
     /// 按优先级排好的目的地：数字小的先，未写的最后，其余保持遍历顺序。
     /// </summary>
     public static IReadOnlyList<Destination> Destinations(
-        ItemSnapshot root, ICollection<string> invalidTagContainers)
+        ItemSnapshot root, ICollection<string> invalidTagContainers,
+        System.Func<string, TagParseResult>? parse = null)
     {
         var destinations = new List<Destination>();
         foreach (ItemSnapshot container in Descendants(root))
@@ -28,7 +29,7 @@ public static class CollectPlanner
             {
                 continue;
             }
-            TagParseResult parsed = TagParser.Parse(container.Tag);
+            TagParseResult parsed = (parse ?? TagParser.Parse)(container.Tag);
             if (!parsed.IsValid)
             {
                 invalidTagContainers.Add(container.Name);

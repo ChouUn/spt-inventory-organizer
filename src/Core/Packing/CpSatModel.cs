@@ -92,7 +92,7 @@ internal static class CpSatModel
     }
 
     /// <summary>缺席矩形不占格；必留物品强制在场，位置和转置受网格边界约束。</summary>
-    private static Rectangle AddItem(
+    internal static Rectangle AddItem(
         CpModel model, NoOverlap2dConstraint overlap, PackRequest request,
         PackItem item, IntVar top)
     {
@@ -123,6 +123,6 @@ internal static class CpSatModel
         return new Rectangle(item, x, y, rotated, present);
     }
 
-    private sealed record Rectangle(
+    internal sealed record Rectangle(
         PackItem Item, IntVar X, IntVar Y, BoolVar Rotated, BoolVar Present);
 }

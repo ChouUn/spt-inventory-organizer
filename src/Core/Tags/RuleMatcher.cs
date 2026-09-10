@@ -19,7 +19,7 @@ public static class RuleMatcher
             conjunction => conjunction.Atoms.All(atom => Matches(atom, item)));
     }
 
-    private static bool Matches(RuleAtom atom, ItemSnapshot item)
+    public static bool Matches(RuleAtom atom, ItemSnapshot item)
     {
         bool hit = atom.Kind == RuleAtomKind.Category
             ? item.Categories.Any(category => EqualsIgnoreCase(category, atom.Text))

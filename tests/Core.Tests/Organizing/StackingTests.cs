@@ -11,6 +11,101 @@ namespace ChouUn.InventoryOrganizer.Core.Tests.Organizing;
 
 public sealed class StackingTests
 {
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task 跨箱链式补充先折叠_按实际结果保持数量(bool failLast)
+    {
+        var port = new StackPort
+        {
+            Tree = CollectPlannerTests.Root(
+                FoldPlannerTests.Item("gun", true, false, LockState.Free),
+                CollectPlannerTests.Box("first", "@o n:never;"),
+                CollectPlannerTests.Box("second", "@o n:never;"),
+                CollectPlannerTests.Box("third", "@o n:never;")),
+            RequireFold = true,
+            FailTransferNumber = failLast ? 2 : null,
+        };
+        port.Add("a", 40, owner: "first");
+        port.Add("b", 40, owner: "second");
+        port.Add("c", 40, owner: "third");
+
+        OrganizeReport report = await Run(port);
+
+        Assert.Equal(1, report.Folded);
+        Assert.Equal(120, port.Total);
+        Assert.All(port.Counts, count => Assert.InRange(count, 1, 60));
+        if (failLast)
+        {
+            Assert.NotEmpty(report.Failures);
+        }
+        else
+        {
+            Assert.Equal(new[] { 60, 60 }, port.Counts);
+            Assert.Empty(report.Failures);
+        }
+    }
+
+    [Fact]
+    public async Task 两箱半堆先合并释放格子_不要求每箱保留数量()
+    {
+        var port = new StackPort
+        {
+            Tree = CollectPlannerTests.Root(
+                CollectPlannerTests.Box("first", "@o n:never;"),
+                CollectPlannerTests.Box("second", "@o n:never;")),
+        };
+        port.Add("a", 30, owner: "first");
+        port.Add("b", 30, owner: "second");
+
+        OrganizeReport report = await Run(port);
+
+        Assert.Equal(new[] { 60 }, port.Counts);
+        Assert.Equal(60, port.Total);
+        Assert.Single(port.Transfers);
+        Assert.Equal(1, report.Merged);
+        Assert.Empty(port.Moves);
+    }
+
+    [Fact]
+    public async Task 同容器能释放同样空间时不跨箱搬数量()
+    {
+        var port = new StackPort
+        {
+            Tree = CollectPlannerTests.Root(
+                CollectPlannerTests.Box("first", "@o n:never;"),
+                CollectPlannerTests.Box("second", "@o n:never;")),
+        };
+        port.Add("a", 30, owner: "first");
+        port.Add("d", 30, owner: "first");
+        port.Add("b", 30, owner: "second");
+        port.Add("c", 30, owner: "second");
+
+        await Run(port);
+
+        Assert.Equal(new[] { 60, 60 }, port.Counts);
+        Assert.All(port.Transfers, t =>
+            Assert.Equal(port.Owner(t.Source), port.Owner(t.Target)));
+    }
+
+    [Fact]
+    public async Task 跨箱合并没有空间收益且没有Pinned接收方时保留原数量()
+    {
+        var port = new StackPort
+        {
+            Tree = CollectPlannerTests.Root(
+                CollectPlannerTests.Box("first", "@o n:never;"),
+                CollectPlannerTests.Box("second", "@o n:never;")),
+        };
+        port.Add("a", 40, owner: "first");
+        port.Add("b", 40, owner: "second");
+
+        await Run(port);
+
+        Assert.Empty(port.Transfers);
+        Assert.Equal(new[] { 40, 40 }, port.Counts);
+    }
+
     [Fact]
     public async Task 补充Pinned并保留堆叠_不取出Pinned或改动Locked()
     {
@@ -238,6 +333,9 @@ public sealed class StackingTests
         public HashSet<string> FullContainers { get; } = new();
         public HashSet<string> Incompatible { get; } = new();
         public string? FailSource { get; set; }
+        public int? FailTransferNumber { get; init; }
+        public bool RequireFold { get; init; }
+        private bool _folded;
         public int Total => _stacks.Values.Sum(s => s.Count);
         public IEnumerable<int> Counts => _stacks.Values.Select(s => s.Count);
 
@@ -283,10 +381,11 @@ public sealed class StackingTests
 
         public Task<StackMergeResult> MergeAsync(string sourceId, string targetId)
         {
+            Assert.True(!RequireFold || _folded);
             Transfers.Add((sourceId, targetId));
             StackSnapshot source = _stacks[sourceId];
             StackSnapshot target = _stacks[targetId];
-            if (sourceId == FailSource)
+            if (sourceId == FailSource || Transfers.Count == FailTransferNumber)
             {
                 return Task.FromResult(new StackMergeResult(
                     0, source.Count, target.Count, "模拟失败"));
@@ -302,8 +401,11 @@ public sealed class StackingTests
                 count, source.Count - count, target.Count + count, null));
         }
 
-        public Task<PortResult> FoldAsync(string itemId) =>
-            throw new InvalidOperationException("本测试没有可折叠物品");
+        public Task<PortResult> FoldAsync(string itemId)
+        {
+            _folded = true;
+            return Task.FromResult(PortResult.Ok);
+        }
 
         public Task<PortResult> MoveAsync(string itemId, string containerId)
         {

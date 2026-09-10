@@ -42,20 +42,34 @@ public static class PackPlanner
             {
                 continue;
             }
-            List<FixedBlock> fixedBlocks = grid.Items
-                .Where(item => item.Lock != LockState.Free)
-                .Select(Footprint)
-                .ToList();
-            List<PackItem> packItems = free.Select(ToPackItem).ToList();
-            var request = new PackRequest(
-                grid.Width, grid.Height, fixedBlocks, packItems);
-            jobs.Add(new GridPackJob(container, grid.Index, request, free));
+            jobs.Add(ForGrid(container, grid));
         }
+    }
+
+    /// <summary>现有物品必留，当前位置提供保底；收纳规划可以追加可选候选。</summary>
+    public static GridPackJob ForGrid(ItemSnapshot container, GridSnapshot grid)
+    {
+        List<ItemSnapshot> free = grid.Items.Where(i => i.Lock == LockState.Free)
+            .ToList();
+        List<FixedBlock> fixedBlocks = grid.Items
+            .Where(item => item.Lock != LockState.Free)
+            .Select(Footprint)
+            .ToList();
+        List<PackItem> packItems = free.Select(ToPackItem).ToList();
+        var request = new PackRequest(grid.Width, grid.Height, fixedBlocks, packItems)
+        {
+            Current = free.Select(i => new Placement(
+                i.Id, i.Position!.X, i.Position.Y, i.Position.Rotated)).ToArray(),
+        };
+        return new GridPackJob(container, grid.Index, request, free);
     }
 
     private static PackItem ToPackItem(ItemSnapshot item)
     {
-        return new PackItem(item.Id, item.TemplateId, item.Width, item.Height);
+        return new PackItem(item.Id, item.TemplateId, item.Width, item.Height)
+        {
+            Required = true,
+        };
     }
 
     private static FixedBlock Footprint(ItemSnapshot item)

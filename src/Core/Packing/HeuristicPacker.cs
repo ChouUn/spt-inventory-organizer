@@ -10,7 +10,7 @@ namespace ChouUn.InventoryOrganizer.Core.Packing;
 /// </summary>
 public sealed class HeuristicPacker : IPacker
 {
-    public PackResult Pack(PackRequest request)
+    public PackResult Pack(PackRequest request, double maxSeconds = 1)
     {
         var occupied = new bool[request.Width, request.Height];
         foreach (FixedBlock block in request.Fixed)

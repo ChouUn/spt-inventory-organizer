@@ -55,33 +55,6 @@ internal sealed class GameInventoryPort : IInventoryPort
         return await CommitAsync(simulated);
     }
 
-    public async Task<PortResult> MoveAsync(string itemId, string containerId)
-    {
-        if (!_items.TryGetValue(itemId, out Item item))
-        {
-            return PortResult.Fail("物品已不在范围内");
-        }
-        _items.TryGetValue(containerId, out Item target);
-        if (target is not CompoundItem container)
-        {
-            return PortResult.Fail("目标容器已不在范围内");
-        }
-        foreach (Grid grid in container.Grids)
-        {
-            if (!grid.TryFindLocationForItem(item, out ItemAddress location))
-            {
-                continue;
-            }
-            OperationResult<MoveResult> simulated =
-                ItemManipulator.Move(item, location, _controller, simulate: true);
-            if (simulated.Succeeded)
-            {
-                return await CommitAsync(simulated);
-            }
-        }
-        return PortResult.Fail("没有可用位置");
-    }
-
     public IReadOnlyList<StackSnapshot> ReadStacks(string containerId)
     {
         if (!_items.TryGetValue(containerId, out Item target)
@@ -97,6 +70,40 @@ internal sealed class GameInventoryPort : IInventoryPort
                 item.StackObjectsCount, item.StackMaxSize,
                 SnapshotReader.ToLockState(item.PinLockState)))
             .ToArray();
+    }
+
+    public bool CanMoveToGrid(string itemId, string containerId, int gridIndex)
+    {
+        return _items.TryGetValue(itemId, out Item item)
+            && item.PinLockState == EItemPinLockState.Free
+            && item.CurrentAddress != null
+            && ItemManipulator.CanModifyItem(item, item.Parent, _controller, out _)
+            && _items.TryGetValue(containerId, out Item target)
+            && target is CompoundItem container
+            && gridIndex < container.Grids.Length
+            && container.Grids[gridIndex].CheckCompatibility(item)
+            && ItemManipulator.CanTransferTo(container.Grids[gridIndex]
+                .CreateItemAddress(new LocationInGrid(0, 0, ItemRotation.Horizontal)),
+                _controller, out _);
+    }
+
+    public async Task<PortResult> MoveToAsync(
+        string containerId, int gridIndex, Placement placement)
+    {
+        if (!CanMoveToGrid(placement.Id, containerId, gridIndex))
+        {
+            return PortResult.Fail("游戏不允许移入目标网格");
+        }
+        var container = (CompoundItem)_items[containerId];
+        var location = new LocationInGrid(placement.X, placement.Y,
+            placement.Rotated ? ItemRotation.Vertical : ItemRotation.Horizontal);
+        OperationResult<MoveResult> simulated = ItemManipulator.Move(
+            _items[placement.Id],
+            container.Grids[gridIndex].CreateItemAddress(location),
+            _controller, simulate: true);
+        return simulated.Succeeded
+            ? await CommitAsync(simulated)
+            : PortResult.Fail(Describe(simulated.Error));
     }
 
     public bool CanStack(string sourceId, string targetId)

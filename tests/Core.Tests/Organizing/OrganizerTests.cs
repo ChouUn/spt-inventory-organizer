@@ -143,6 +143,13 @@ public sealed class OrganizerTests
             return Task.FromResult(result);
         }
 
+        public bool CanMoveToGrid(
+            string itemId, string containerId, int gridIndex) => true;
+
+        public Task<PortResult> MoveToAsync(
+            string containerId, int gridIndex, Placement placement) =>
+            MoveAsync(placement.Id, containerId);
+
         public List<string> Arranged { get; } = new List<string>();
 
         public Task<PortResult> ArrangeAsync(

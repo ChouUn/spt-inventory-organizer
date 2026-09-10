@@ -49,9 +49,8 @@ public sealed class Organizer
     }
 
     /// <summary>
-    /// 规则按优先级逐条执行，匹配后先补充已有堆叠，再尝试移入剩余物品。
-    /// 放不进去的剩余数量留给后面的规则；全部规则试完仍在的物品留在原地。
-    /// 这里贪心地用游戏找到的第一个空位，容器内的碎片留给排布阶段处理。
+    /// 规则按优先级逐条执行，先补充堆叠，再联合排布原有物品与本规则候选。
+    /// 原有物品必留；未选中或游戏拒绝的候选留给后面的规则。
     /// </summary>
     private async Task CollectAsync(OrganizeReport report)
     {
@@ -64,74 +63,146 @@ public sealed class Organizer
             report.Warnings.Add($"容器 {container} 的 tag 无效，未参与收纳");
         }
 
-        IReadOnlyList<ItemSnapshot> remaining = CollectPlanner.Candidates(root);
+        var remaining = new HashSet<string>(
+            CollectPlanner.Candidates(root).Select(i => i.Id));
         foreach (Destination destination in destinations)
         {
-            var leftovers = new List<ItemSnapshot>();
-            foreach (ItemSnapshot item in remaining)
+            ItemSnapshot[] matching = CollectPlanner.Candidates(root)
+                .Where(i => remaining.Contains(i.Id)
+                    && RuleMatcher.Matches(destination.Rule, i)).ToArray();
+            if (matching.Length == 0)
             {
-                bool moved = RuleMatcher.Matches(destination.Rule, item)
-                    && await TryMoveAsync(root.Id, item, destination.Container, report);
-                if (moved)
+                continue;
+            }
+            foreach (ItemSnapshot item in matching)
+            {
+                if (await _merger.TopUpAsync(
+                    root.Id, item.Id, destination.Container.Id, report))
                 {
                     report.Moved++;
-                }
-                else
-                {
-                    leftovers.Add(item);
+                    remaining.Remove(item.Id);
                 }
             }
-            remaining = leftovers;
+            await CollectIntoAsync(destination, matching, remaining, report);
+            root = _port.ReadSnapshot();
         }
     }
 
-    private async Task<bool> TryMoveAsync(
-        string rootId, ItemSnapshot item, ItemSnapshot container, OrganizeReport report)
+    /// <summary>每个网格先给已选候选留出空位，再逐项走游戏移动事务。</summary>
+    private async Task CollectIntoAsync(
+        Destination destination, IReadOnlyList<ItemSnapshot> matching,
+        HashSet<string> remaining, OrganizeReport report)
     {
-        if (await _merger.TopUpAsync(rootId, item.Id, container.Id, report))
+        foreach (GridSnapshot originalGrid in destination.Container.Grids)
         {
-            return true;
+            if (!matching.Any(i => remaining.Contains(i.Id)))
+            {
+                break;
+            }
+            ItemSnapshot root = _port.ReadSnapshot();
+            ItemSnapshot? container = OrganizeScope.Containers(root)
+                .FirstOrDefault(c => c.Id == destination.Container.Id);
+            if (container is null)
+            {
+                return;
+            }
+            GridSnapshot grid = container.Grids
+                .Single(g => g.Index == originalGrid.Index);
+            ItemSnapshot[] candidates = matching.Where(i => remaining.Contains(i.Id)
+                && _port.CanMoveToGrid(i.Id, container.Id, grid.Index)).ToArray();
+            if (candidates.Length == 0)
+            {
+                continue;
+            }
+            GridPackJob job = PackPlanner.ForGrid(container, grid);
+            PackRequest request = job.Request with
+            {
+                Items = job.Request.Items.Concat(candidates.Select(i =>
+                    new PackItem(i.Id, i.TemplateId, i.Width, i.Height))).ToArray(),
+            };
+            PackResult packed = await SolveAsync(request, container.Name, report);
+            var candidateIds = new HashSet<string>(candidates.Select(i => i.Id));
+            Placement[] incoming = packed.Placements
+                .Where(p => candidateIds.Contains(p.Id)).ToArray();
+            if (incoming.Length == 0 || packed.Unplaced.Any(i => i.Required))
+            {
+                continue;
+            }
+            Placement[] existing = packed.Placements
+                .Where(p => !candidateIds.Contains(p.Id)).ToArray();
+            if (!await ApplyAsync(job, Changed(job, existing), report))
+            {
+                continue;
+            }
+            foreach (Placement placement in incoming)
+            {
+                // 前一个候选刚移入时可能新增可补充堆叠，重新询问当前数量。
+                bool consumed = await _merger.TopUpAsync(
+                    root.Id, placement.Id, container.Id, report);
+                if (consumed || (await _port.MoveToAsync(
+                    container.Id, grid.Index, placement)).Succeeded)
+                {
+                    report.Moved++;
+                    remaining.Remove(placement.Id);
+                }
+            }
         }
-        PortResult result = await _port.MoveAsync(item.Id, container.Id);
-        return result.Succeeded;
     }
 
     /// <summary>逐网格排布。放不下全部物品或布局与现状相同的网格不动。</summary>
     private async Task PackAsync(OrganizeReport report)
     {
         ItemSnapshot root = _port.ReadSnapshot();
-        var planning = Stopwatch.StartNew();
         IReadOnlyList<GridPackJob> jobs = PackPlanner.Plan(root);
-        planning.Stop();
         foreach (GridPackJob job in jobs)
         {
             string where = $"{job.Container.Name} 网格 {job.GridIndex}";
-            planning.Start();
-            PackResult packed = _packer.Pack(job.Request);
-            planning.Stop();
+            PackResult packed = await SolveAsync(job.Request, where, report);
             if (!packed.Complete)
             {
                 report.Warnings.Add(
                     $"{where} 排布放不下 {packed.Unplaced.Count} 件，保持原样");
                 continue;
             }
-            IReadOnlyList<Placement> changed = Changed(job, packed.Placements);
-            if (changed.Count == 0)
-            {
-                continue;
-            }
-            PortResult result = await _port.ArrangeAsync(
-                job.Container.Id, job.GridIndex, changed);
-            if (result.Succeeded)
-            {
-                report.Packed++;
-            }
-            else
-            {
-                report.Failures.Add($"排布 {where}：{result.Error}");
-            }
+            await ApplyAsync(job, Changed(job, packed.Placements), report);
         }
-        report.PackPlanningMilliseconds = planning.ElapsedMilliseconds;
+    }
+
+    /// <summary>收纳与排布共用 3 秒预算，单次最多 1 秒；纯数据在后台求解。</summary>
+    private async Task<PackResult> SolveAsync(
+        PackRequest request, string where, OrganizeReport report)
+    {
+        double seconds = System.Math.Max(0,
+            System.Math.Min(1, 3 - report.PackPlanningMilliseconds / 1000.0));
+        var elapsed = Stopwatch.StartNew();
+        PackResult result = await Task.Run(() => _packer.Pack(request, seconds));
+        report.PackPlanningMilliseconds += elapsed.ElapsedMilliseconds;
+        report.Diagnostics.Add($"packing {where}: {result.Diagnostic}");
+        if (result.Warning != null)
+        {
+            report.Warnings.Add($"{where}：{result.Warning}");
+        }
+        return result;
+    }
+
+    private async Task<bool> ApplyAsync(
+        GridPackJob job, IReadOnlyList<Placement> changed, OrganizeReport report)
+    {
+        if (changed.Count == 0)
+        {
+            return true;
+        }
+        PortResult result = await _port.ArrangeAsync(
+            job.Container.Id, job.GridIndex, changed);
+        if (result.Succeeded)
+        {
+            report.Packed++;
+        }
+        else
+        {
+            report.Failures.Add($"排布 {job.Container.Name}：{result.Error}");
+        }
+        return result.Succeeded;
     }
 
     /// <summary>
@@ -168,4 +239,6 @@ public sealed class OrganizeReport
     public List<string> Warnings { get; } = new List<string>();
 
     public List<string> Failures { get; } = new List<string>();
+
+    public List<string> Diagnostics { get; } = new List<string>();
 }

@@ -43,7 +43,7 @@ tag 语法与各阶段算法的精确契约放 `feats/`，实施顺序放 `plans
 | --- | --- | --- |
 | TagGrammar | Core | tag 文本解析为规则列表；错误带位置，供编辑提示使用 |
 | Matching | Core | 规则表达式对物品描述求值 |
-| Collector | Core | 按规则优先级全局调度，决定每个物品进哪个容器 |
+| Collector | Core | 按规则优先级调度，联合目标原有物品选择收纳组合 |
 | StackMerger | Core | 编排容器内合并和收纳时的补充，兼容性与数量由游戏确认 |
 | Packing | Core | 装箱接口；CpSat 实现处理大件，Heuristic 实现处理 1×1 与退路 |
 | Orchestrator | Core | 统一驱动整理各阶段：取快照、算计划、模拟、提交 |
@@ -92,7 +92,7 @@ flowchart TB
     Click[Patches 截获排序按钮] --> Snap[GameAdapter 读快照]
     Snap --> Fold[阶段一：折叠计划，逐项模拟并提交]
     Fold --> Merge[阶段二：容器内合并，逐项模拟并提交]
-    Merge --> Collect[阶段三：按规则先补充堆叠，再收纳余量]
+    Merge --> Collect[阶段三：补充堆叠，规划并腾位，再收纳余量]
     Collect --> Pack[阶段四：Packing 逐容器排布，逐项模拟并提交]
     Pack --> Notify[通知结果：成功数与失败项]
     Fold -. 异常 .-> Abort[中止并通知]
@@ -102,8 +102,10 @@ flowchart TB
 ```
 
 - 快照是纯数据：容器树、每个物品的类别链、名称、FiR、尺寸、可折叠、锁状态、tag 文本。
-- Collector 决定「进哪个容器」时可向 Packing 询问可行性，
-  排布阶段再决定「放在哪」。两阶段的具体配合方式属于算法设计，不在本文约束。
+- Collector 向 Packing 提供目标原有物品与同规则候选，原有物品必留，候选可不选中。
+  GameAdapter 应用腾位布局后，把选中的候选移到规划位置；最终排布继续使用同一求解接口。
+- 求解只接触快照，在后台运行；游戏对象访问与事务应用留在游戏线程。
+  收纳与最终排布共享一次整理的求解预算。
 - Pinned 与 Locked 物品在快照中标出，Collector 与 Packing 都把它们当作固定占位。
 - 合并读取容器直属堆叠的最新数量，并按游戏事务的实际结果继续处理。
   Pinned 只接收数量补充，Locked 子树跳过；不会调用 UIFixes 的合并或排序流程。
@@ -122,7 +124,7 @@ flowchart TB
 - 可折叠、锁状态、容器是否接受某物品，由 GameAdapter 问游戏后写进快照，
   Core 不复制游戏规则。
 - 未通过 simulate 的变更不得提交。
-- 触碰任何 Packing 类型之前，Bootstrap 必须已把原生库目录加入搜索路径；
+- 触碰任何原生求解器类型之前，Bootstrap 必须已加载原生入口及其依赖；
   失败的 P/Invoke 初始化在进程内不可恢复。
 - 阶段顺序与阶段内算法的选择封装在 Core，插件不感知。
 - 一次排序触发只启动一条整理流程，由本 mod 统一管理忙碌状态与结果通知。

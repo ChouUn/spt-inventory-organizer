@@ -23,7 +23,8 @@ public sealed class Plugin : BaseUnityPlugin
         // 必须先于任何触碰 OR-Tools 类型的代码：
         // 失败的 P/Invoke 初始化在进程内不可恢复。
         string pluginDir = Path.GetDirectoryName(Info.Location)!;
-        NativeLibraries.AddSearchDirectory(pluginDir);
+        NativeLibraries.Load(pluginDir);
+        Logger.LogInfo("OR-Tools native entry and dependencies loaded");
 
         new EditTagWindowShowPatch().Enable();
         new EditTagWindowSavePatch().Enable();

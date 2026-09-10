@@ -17,10 +17,12 @@ public interface IInventoryPort
 
     Task<PortResult> FoldAsync(string itemId);
 
-    /// <summary>
-    /// 把物品移入目标容器中第一个接受它且有空位的网格；没有这样的网格时失败。
-    /// </summary>
-    Task<PortResult> MoveAsync(string itemId, string containerId);
+    /// <summary>只询问游戏的容器接受性和锁限制，不要求当前有连续空位。</summary>
+    bool CanMoveToGrid(string itemId, string containerId, int gridIndex);
+
+    /// <summary>重排已腾出位置后，先模拟再把候选移入该精确位置。</summary>
+    Task<PortResult> MoveToAsync(
+        string containerId, int gridIndex, Placement placement);
 
     /// <summary>读取容器各网格直属的可堆叠物品，不读取子容器或弹匣内部。</summary>
     IReadOnlyList<StackSnapshot> ReadStacks(string containerId);

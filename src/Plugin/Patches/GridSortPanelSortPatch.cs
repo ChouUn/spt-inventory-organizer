@@ -57,7 +57,7 @@ internal sealed class GridSortPanelSortPatch : ModulePatch
             panel.ChangeProgress(inProgress: true);
             var stopwatch = Stopwatch.StartNew();
             var organizer = new Organizer(
-                new GameInventoryPort(root, controller), new HeuristicPacker());
+                new GameInventoryPort(root, controller), new CpSatPacker());
             OrganizeReport report = await organizer.RunAsync();
             Notify(report);
             Plugin.Log.LogInfo(
@@ -79,6 +79,10 @@ internal sealed class GridSortPanelSortPatch : ModulePatch
 
     private static void Notify(OrganizeReport report)
     {
+        foreach (string diagnostic in report.Diagnostics)
+        {
+            Plugin.Log.LogInfo(diagnostic);
+        }
         Plugin.Log.LogInfo(
             $"organize: folded {report.Folded}, moved {report.Moved}, " +
             $"merged {report.Merged}, packed {report.Packed}, " +

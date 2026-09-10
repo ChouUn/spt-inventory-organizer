@@ -285,6 +285,13 @@ public sealed class StackingTests
             return Task.FromResult(PortResult.Ok);
         }
 
+        public bool CanMoveToGrid(
+            string itemId, string containerId, int gridIndex) => true;
+
+        public Task<PortResult> MoveToAsync(
+            string containerId, int gridIndex, Placement placement) =>
+            MoveAsync(placement.Id, containerId);
+
         public Task<PortResult> ArrangeAsync(
             string containerId, int gridIndex, IReadOnlyList<Placement> placements)
         {

@@ -1,0 +1,156 @@
+using System;
+using System.Collections.Generic;
+using System.Diagnostics;
+using System.Linq;
+
+namespace ChouUn.InventoryOrganizer.Core.Packing;
+
+/// <summary>以启发式保底，限时优化大件，再填充 1×1 空位。</summary>
+public sealed class CpSatPacker : IPacker
+{
+    public PackResult Pack(PackRequest request, double maxSeconds = 1)
+    {
+        var elapsed = Stopwatch.StartNew();
+        PackResult baseline = Baseline(request);
+        int area = Area(request, baseline);
+        long[] available = AvailableCells(request);
+        int lowerHeight = Array.FindIndex(available, cells => cells >= area);
+        string facts = Describe(request, baseline, maxSeconds, lowerHeight);
+        string? skip = maxSeconds <= 0 ? "budget-exhausted"
+            : request.Items.All(i => i.Width == 1 && i.Height == 1)
+                ? "only-single-cells"
+            : baseline.Complete && Height(request, baseline) == lowerHeight
+                ? "optimum-bound" : null;
+        if (skip != null)
+        {
+            return baseline with { Diagnostic = $"skip={skip}; {facts}" };
+        }
+
+        // 原生调用隔离在另一个方法：加载失败仍可返回已算好的启发式结果。
+        try
+        {
+            double remaining = maxSeconds - elapsed.Elapsed.TotalSeconds;
+            if (remaining <= 0)
+            {
+                return baseline with
+                {
+                    Diagnostic = $"skip=budget-after-baseline; {facts}",
+                };
+            }
+            PackResult? solved = CpSatModel.Solve(request, baseline, remaining,
+                out string status);
+            PackResult best = solved != null && Better(request, solved, baseline)
+                ? solved : baseline;
+            return best with
+            {
+                Diagnostic = $"cp-sat {status}, {elapsed.ElapsedMilliseconds} ms, " +
+                    $"area {area}->{Area(request, best)}, " +
+                    $"movable-rows {Height(request, baseline)}" +
+                    $"->{Height(request, best)}; "
+                    + facts,
+            };
+        }
+        catch (Exception ex) when (ex is DllNotFoundException
+            || ex is TypeInitializationException
+            || ex is System.IO.FileNotFoundException
+            || ex is System.IO.FileLoadException)
+        {
+            return baseline with
+            {
+                Diagnostic = $"solver unavailable; {facts}: {ex}",
+                Warning = "求解器加载失败，已采用保底布局",
+            };
+        }
+    }
+
+    /// <summary>比较新排布与原位填空；必留物品不能被启发式遗漏。</summary>
+    private static PackResult Baseline(PackRequest request)
+    {
+        var heuristic = new HeuristicPacker();
+        PackResult fresh = heuristic.Pack(request);
+        if (request.Current.Count == 0)
+        {
+            return fresh;
+        }
+        var currentIds = new HashSet<string>(request.Current.Select(p => p.Id));
+        var rest = request with
+        {
+            Fixed = request.Fixed.Concat(Blocks(request, request.Current)).ToArray(),
+            Items = request.Items.Where(i => !currentIds.Contains(i.Id)).ToArray(),
+        };
+        PackResult filled = heuristic.Pack(rest);
+        var preserved = new PackResult(
+            request.Current.Concat(filled.Placements).ToArray(), filled.Unplaced);
+        // 相同面积和可移动高度时仍执行常规归拢、同模板排序。
+        return fresh.Unplaced.Any(i => i.Required) || Better(request, preserved, fresh)
+            ? preserved : fresh;
+    }
+
+    internal static bool Better(PackRequest request, PackResult next, PackResult before)
+    {
+        if (next.Unplaced.Any(i => i.Required))
+        {
+            return false;
+        }
+        int difference = Area(request, next) - Area(request, before);
+        return difference > 0 || (difference == 0
+            && Height(request, next) < Height(request, before));
+    }
+
+    internal static int Area(PackRequest request, PackResult result)
+    {
+        var ids = new HashSet<string>(result.Placements.Select(p => p.Id));
+        return request.Items.Where(i => ids.Contains(i.Id))
+            .Sum(i => i.Width * i.Height);
+    }
+
+    internal static int Height(PackRequest request, PackResult result) =>
+        Blocks(request, result.Placements)
+            .Select(b => b.Y + b.Height).DefaultIfEmpty().Max();
+
+    /// <summary>每个高度内的真实可用格数；固定物品只扣面积，不抬高优化目标。</summary>
+    internal static long[] AvailableCells(PackRequest request)
+    {
+        var available = new long[request.Height + 1];
+        for (int row = 0; row < request.Height; row++)
+        {
+            int blocked = request.Fixed.Where(b => b.Y <= row && row < b.Y + b.Height)
+                .Sum(b => b.Width);
+            available[row + 1] = available[row] + request.Width - blocked;
+        }
+        return available;
+    }
+
+    /// <summary>输出退出判断的输入，区分固定障碍、可移动高度和实际变化数量。</summary>
+    private static string Describe(
+        PackRequest request, PackResult baseline, double seconds, int lowerHeight)
+    {
+        var currentIds = new HashSet<string>(request.Current.Select(p => p.Id));
+        var current = new PackResult(request.Current,
+            request.Items.Where(i => !currentIds.Contains(i.Id)).ToArray());
+        var positions = request.Current.ToDictionary(p => p.Id);
+        int changed = baseline.Placements.Count(p =>
+            !positions.TryGetValue(p.Id, out Placement? old) || old != p);
+        int fixedBottom = request.Fixed.Select(b => b.Y + b.Height)
+            .DefaultIfEmpty().Max();
+        return $"grid={request.Width}x{request.Height}, items={request.Items.Count}, " +
+            $"large={request.Items.Count(i => i.Width != 1 || i.Height != 1)}, " +
+            $"fixed={request.Fixed.Count}, fixed-bottom={fixedBottom}, " +
+            $"current-movable-rows={Height(request, current)}, " +
+            $"baseline-movable-rows={Height(request, baseline)}, " +
+            $"lower={lowerHeight}, " +
+            $"baseline-area={Area(request, baseline)}, " +
+            $"unplaced={baseline.Unplaced.Count}, " +
+            $"changed={changed}, " +
+            FormattableString.Invariant($"budget={seconds:F3}s");
+    }
+
+    internal static IEnumerable<FixedBlock> Blocks(
+        PackRequest request, IReadOnlyList<Placement> placements)
+    {
+        var items = request.Items.ToDictionary(i => i.Id);
+        return placements.Select(p => new FixedBlock(p.X, p.Y,
+            p.Rotated ? items[p.Id].Height : items[p.Id].Width,
+            p.Rotated ? items[p.Id].Width : items[p.Id].Height));
+    }
+}

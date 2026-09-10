@@ -5,6 +5,7 @@ SPT 一键整理仓库 mod 的项目文档。
 - [requirements.md](requirements.md)：用户原始需求与待澄清问题
 - [arch.md](arch.md)：总体设计，模块边界、依赖方向与核心数据流
 - [feats/tag-grammar.md](feats/tag-grammar.md)：tag 规则语法契约
+- [feats/packing.md](feats/packing.md)：排布目标、收纳空间选择、锁与求解预算
 - [plans/mvp.md](plans/mvp.md)：MVP 实施计划
 
 ## 调研报告

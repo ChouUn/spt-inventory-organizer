@@ -5,4 +5,11 @@
     <RootNamespace>ChouUn.InventoryOrganizer.Core</RootNamespace>
   </PropertyGroup>
 
+  <ItemGroup>
+    <PackageReference Include="Google.OrTools" Version="9.15.6755" />
+    <!-- 统一 Protobuf、System.Memory 与测试宿主的 Unsafe 程序集版本。 -->
+    <PackageReference Include="System.Runtime.CompilerServices.Unsafe"
+                      Version="6.0.0" />
+  </ItemGroup>
+
 </Project>

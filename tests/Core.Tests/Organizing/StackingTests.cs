@@ -72,6 +72,37 @@ public sealed class StackingTests
     private static Task<OrganizeReport> Run(StackPort port) =>
         new Organizer(port, new HeuristicPacker()).RunAsync();
 
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task 新移入堆叠由未选中候选补满_余量才进入后续规则(bool hasNextRule)
+    {
+        ItemSnapshot first = CollectPlannerTests.Box("first", "@o#1 弹药;") with
+        {
+            Grids = new[] { new GridSnapshot(0, 1, 1, Array.Empty<ItemSnapshot>()) },
+        };
+        var port = new StackPort
+        {
+            Tree = hasNextRule
+                ? CollectPlannerTests.Root(first,
+                    CollectPlannerTests.Box("second", "@o#2 弹药;"))
+                : CollectPlannerTests.Root(first),
+        };
+        port.Add("a-partial", 40);
+        port.Add("b-full", 60);
+
+        OrganizeReport report = await new Organizer(port, new CpSatPacker()).RunAsync();
+
+        Assert.Equal("first", port.Owner("a-partial"));
+        Assert.Equal(60, port.Count("a-partial"));
+        Assert.Equal(40, port.Count("b-full"));
+        Assert.Equal(hasNextRule ? "second" : "root", port.Owner("b-full"));
+        Assert.Equal(100, port.Total);
+        Assert.Equal(1, report.Merged);
+        Assert.Equal(hasNextRule ? 2 : 1, report.Moved);
+        Assert.Empty(report.Failures);
+    }
+
     [Fact]
     public async Task 仅合并根与有效tag容器_穿过无tag父容器但跳过Locked子树()
     {
@@ -191,7 +222,8 @@ public sealed class StackingTests
         Assert.Equal(1, report.Merged);
         Assert.Equal(1, report.Moved);
         Assert.Equal(80, port.Total);
-        Assert.Empty(report.Failures);
+        Assert.Equal("收纳 source (source) -> first (first) 网格 0：没有空位",
+            Assert.Single(report.Failures));
     }
 
     private sealed class StackPort : IInventoryPort
@@ -288,9 +320,17 @@ public sealed class StackingTests
         public bool CanMoveToGrid(
             string itemId, string containerId, int gridIndex) => true;
 
-        public Task<PortResult> MoveToAsync(
-            string containerId, int gridIndex, Placement placement) =>
-            MoveAsync(placement.Id, containerId);
+        public async Task<PortResult> MoveToAsync(
+            string containerId, int gridIndex, Placement placement)
+        {
+            PortResult result = await MoveAsync(placement.Id, containerId);
+            if (result.Succeeded)
+            {
+                _positions[placement.Id] = new GridPosition(
+                    placement.X, placement.Y, placement.Rotated);
+            }
+            return result;
+        }
 
         public Task<PortResult> ArrangeAsync(
             string containerId, int gridIndex, IReadOnlyList<Placement> placements)

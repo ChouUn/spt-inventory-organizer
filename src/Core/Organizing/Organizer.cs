@@ -134,16 +134,43 @@ public sealed class Organizer
             {
                 continue;
             }
+            bool movedIntoGrid = false;
             foreach (Placement placement in incoming)
             {
                 // 前一个候选刚移入时可能新增可补充堆叠，重新询问当前数量。
                 bool consumed = await _merger.TopUpAsync(
                     root.Id, placement.Id, container.Id, report);
-                if (consumed || (await _port.MoveToAsync(
-                    container.Id, grid.Index, placement)).Succeeded)
+                if (!consumed)
                 {
-                    report.Moved++;
-                    remaining.Remove(placement.Id);
+                    PortResult moved = await _port.MoveToAsync(
+                        container.Id, grid.Index, placement);
+                    if (!moved.Succeeded)
+                    {
+                        ItemSnapshot item = candidates
+                            .Single(i => i.Id == placement.Id);
+                        report.Failures.Add(
+                            $"收纳 {item.Name} ({item.Id}) -> " +
+                            $"{container.Name} ({container.Id}) 网格 {grid.Index}：" +
+                            moved.Error);
+                        continue;
+                    }
+                    movedIntoGrid = true;
+                }
+                report.Moved++;
+                remaining.Remove(placement.Id);
+            }
+            if (movedIntoGrid)
+            {
+                // 新移入的堆叠可能还有容量。先用本规则所有剩余候选补充，
+                // 包括没有被选入布局的物品，再把余量留给下一网格或后续规则。
+                foreach (ItemSnapshot item in matching)
+                {
+                    if (remaining.Contains(item.Id) && await _merger.TopUpAsync(
+                        root.Id, item.Id, container.Id, report))
+                    {
+                        report.Moved++;
+                        remaining.Remove(item.Id);
+                    }
                 }
             }
         }

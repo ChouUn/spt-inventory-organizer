@@ -101,6 +101,30 @@ public sealed class CollectPackingTests
     private static Task<OrganizeReport> Run(PackingPort port) =>
         new Organizer(port, new CpSatPacker()).RunAsync();
 
+    [Theory]
+    [InlineData(false, "模拟拒绝")]
+    [InlineData(true, "网络事务失败")]
+    public async Task 移动失败记录物品目标和原因_候选仍可进入后续规则(
+        bool hasNextRule, string error)
+    {
+        var port = new PackingPort { FailingMove = "first", MoveError = error };
+        port.Box("first", 2, 2, "@o#1 物品;");
+        if (hasNextRule)
+        {
+            port.Box("second", 2, 2, "@o#2 物品;");
+        }
+        port.Item("item", 1, 1);
+
+        OrganizeReport report = await Run(port);
+
+        Assert.Equal($"收纳 item (item) -> first (first) 网格 0：{error}",
+            Assert.Single(report.Failures));
+        Assert.Equal(hasNextRule ? 1 : 0, report.Moved);
+        Assert.Equal(hasNextRule ? "second" : "root", port.Owner("item"));
+        Assert.Equal(hasNextRule ? 2 : 1, port.MoveAttempts);
+        port.AssertValid();
+    }
+
     [Fact]
     public async Task 多网格共用三秒预算_后续预算归零_求解不在调用上下文()
     {
@@ -146,6 +170,9 @@ public sealed class CollectPackingTests
         public List<string> Events { get; } = new();
         public HashSet<string> Denied { get; } = new();
         public string? FailingArrange { get; init; }
+        public string? FailingMove { get; init; }
+        public string MoveError { get; init; } = "模拟拒绝";
+        public int MoveAttempts { get; private set; }
 
         public PackingPort() => _items.Add("root", CollectPlannerTests.Root());
 
@@ -201,6 +228,11 @@ public sealed class CollectPackingTests
         {
             Assert.Equal("root", Owner(placement.Id));
             Assert.Equal(LockState.Free, _items[placement.Id].Lock);
+            MoveAttempts++;
+            if (containerId == FailingMove)
+            {
+                return Task.FromResult(PortResult.Fail(MoveError));
+            }
             _owners[placement.Id] = containerId;
             SetPosition(placement);
             AssertValid();

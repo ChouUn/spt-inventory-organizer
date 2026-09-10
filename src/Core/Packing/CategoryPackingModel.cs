@@ -7,7 +7,7 @@ using Google.OrTools.Sat;
 
 namespace ChouUn.InventoryOrganizer.Core.Packing;
 
-/// <summary>联合优化面积、高度和类别跨度；全部物品含单格参与位置求解。</summary>
+/// <summary>各网格内部加权空间与类别跨度，再累加分数共同求解。</summary>
 internal static class CategoryPackingModel
 {
     public static ContainerPackResult? Solve(IReadOnlyList<PackRequest> requests,
@@ -16,15 +16,14 @@ internal static class CategoryPackingModel
         var elapsed = Stopwatch.StartNew();
         var model = new CpModel();
         var grids = new List<List<CpSatModel.Rectangle>>();
-        var tops = new List<IntVar>();
-        int depth = requests.Max(CategoryPacking.Depth);
-        var spans = Enumerable.Range(0, depth)
-            .Select(_ => new List<IntVar>()).ToArray();
-        var areas = new List<LinearExpr>();
+        var objectives = new List<IReadOnlyList<PackingObjective>>();
+        var details = new List<string>();
         for (int grid = 0; grid < requests.Count; grid++)
         {
             PackRequest request = requests[grid];
             PackResult before = baseline.Grids[grid];
+            var spans = Enumerable.Range(0, CategoryPacking.Depth(request))
+                .Select(_ => new List<IntVar>()).ToArray();
             NoOverlap2dConstraint overlap = model.AddNoOverlap2D();
             foreach (FixedBlock block in request.Fixed)
             {
@@ -34,7 +33,6 @@ internal static class CategoryPackingModel
                         LinearExpr.Constant(block.Y), block.Height, "fixed-y"));
             }
             IntVar top = model.NewIntVar(0, request.Height, "top-" + grid);
-            tops.Add(top);
             var rectangles = new List<CpSatModel.Rectangle>();
             grids.Add(rectangles);
             var hints = before.Placements.ToDictionary(p => p.Id);
@@ -55,7 +53,6 @@ internal static class CategoryPackingModel
             }
             LinearExpr area = LinearExpr.Sum(rectangles.Select(r =>
                 r.Present * (r.Item.Width * r.Item.Height)));
-            areas.Add(area);
             IntVar available = model.NewIntVar(0,
                 request.Width * request.Height, "available");
             long[] cells = CpSatPacker.AvailableCells(request);
@@ -64,10 +61,18 @@ internal static class CategoryPackingModel
             int height = CpSatPacker.Height(request, before);
             model.AddHint(top, height);
             model.AddHint(available, cells[height]);
+            var categoryVariables = new Dictionary<string, IntVar>();
             foreach (var group in rectangles.SelectMany(r => r.Item.CategoryPath
                 .Select((id, level) => (Id: id, Level: level, Rect: r)))
                 .GroupBy(entry => (entry.Id, entry.Level)))
             {
+                string members = string.Join(",", group.Select(r => r.Rect.Item.Id)
+                    .OrderBy(id => id, StringComparer.Ordinal));
+                if (categoryVariables.TryGetValue(members, out IntVar? existing))
+                {
+                    spans[group.Key.Level].Add(existing);
+                    continue;
+                }
                 // inclusive bottom - first row；缺席类别强制为零。
                 IntVar first = model.NewIntVar(0, request.Height - 1, "category-first");
                 IntVar last = model.NewIntVar(0, request.Height - 1, "category-last");
@@ -95,55 +100,52 @@ internal static class CategoryPackingModel
                 model.AddHint(last, max);
                 model.AddHint(span, max - min);
                 spans[group.Key.Level].Add(span);
+                categoryVariables.Add(members, span);
             }
+            objectives.Add(GridObjectives(model, request, before, top, area,
+                spans, out string detail));
+            details.Add($"grid={grid} {detail}");
         }
         foreach (var item in grids.SelectMany(g => g).GroupBy(r => r.Item.Id))
         {
             model.Add(LinearExpr.Sum(item.Select(r => r.Present)) <= 1);
         }
+
         PackingSymmetry.Add(model, requests, grids.SelectMany((g, index) =>
             g.Select(r => (index, r))), baseline);
-        // 分阶段锁定已证明的高层目标，避免多层大权重溢出及浮点目标精度损失。
-        long heightWeight = requests.Sum(r => (long)r.Height) + 1;
-        LinearExpr space = LinearExpr.Sum(tops) - LinearExpr.Sum(areas) * heightWeight;
-        long spaceBefore = ContainerPacker.Height(requests, baseline)
-            - ContainerPacker.Area(requests, baseline) * heightWeight;
-        var objectives = new[] { space }
-            .Concat(spans.Select(level => LinearExpr.Sum(level))).ToArray();
-        long[] costs = new[] { spaceBefore }.Concat(Enumerable.Range(0, depth)
-            .Select(d => (long)requests.Select((r, i) =>
-                CategoryPacking.Span(r, baseline.Grids[i], d)).Sum())).ToArray();
-        bool spaceOptimal = requests.Select((r, i) =>
+        IReadOnlyList<PackingObjective> blocks =
+            PackingObjective.Sum(model, objectives);
+        var diagnostics = new List<string>();
+        if (blocks.Count == 0)
         {
-            int area = CpSatPacker.Area(r, baseline.Grids[i]);
-            return area == CategoryPacking.AreaUpperBound(r)
-                && CpSatPacker.Height(r, baseline.Grids[i])
-                    == Array.FindIndex(CpSatPacker.AvailableCells(r), a => a >= area);
-        }).All(optimal => optimal);
+            status = "Optimal; objective=grid-sum; " + string.Join("; ", details);
+            return baseline;
+        }
         using var solver = new CpSolver();
         bool hasSolution = false;
         status = "Optimal";
-        for (int stage = 0; stage < objectives.Length; stage++)
+        for (int stage = 0; stage < blocks.Count; stage++)
         {
-            if (stage == 0 && spaceOptimal)
-            {
-                model.Add(space == spaceBefore);
-                continue;
-            }
+            PackingObjective block = blocks[stage];
             double remaining = seconds - elapsed.Elapsed.TotalSeconds;
             if (remaining <= 0)
             {
-                status = "Feasible; budget-exhausted before level=" + (stage - 1);
+                status = "Feasible; budget-exhausted before " + block.Label;
                 break;
             }
-            LinearExpr objective = objectives[stage];
-            model.Add(objective <= costs[stage]);
+            LinearExpr objective = block.Expression;
+            long ceiling = hasSolution ? solver.Value(objective) : block.Current;
+            model.Add(objective <= ceiling);
             model.Minimize(objective);
+            var stageClock = Stopwatch.StartNew();
             solver.StringParameters = "max_time_in_seconds:"
                 + remaining.ToString("R", CultureInfo.InvariantCulture)
                 + ",num_workers:1,random_seed:0";
             CpSolverStatus solved = solver.Solve(model);
-            status = solved.ToString() + "; level=" + (stage - 1);
+            diagnostics.Add($"block={block.Label}:{solved}:"
+                + $"{stageClock.ElapsedMilliseconds}ms");
+            status = solved.ToString() + "; objective=grid-sum; "
+                + string.Join("; ", diagnostics) + "; " + string.Join("; ", details);
             if (solved != CpSolverStatus.Optimal && solved != CpSolverStatus.Feasible)
             {
                 return hasSolution ? baseline : null;
@@ -159,10 +161,6 @@ internal static class CategoryPackingModel
             {
                 model.Model.SolutionHint.Vars.Add(variable);
                 model.Model.SolutionHint.Values.Add(response.Solution[variable]);
-            }
-            for (int next = stage + 1; next < objectives.Length; next++)
-            {
-                costs[next] = solver.Value(objectives[next]);
             }
             if (solved != CpSolverStatus.Optimal)
             {
@@ -188,5 +186,58 @@ internal static class CategoryPackingModel
             }
             return new ContainerPackResult(results);
         }
+    }
+
+    /// <summary>仅在本网格内确定优先级；固定项省去常数，倍率仍按原上界计算。</summary>
+    private static IReadOnlyList<PackingObjective> GridObjectives(CpModel model,
+        PackRequest request, PackResult before, IntVar top, LinearExpr area,
+        IReadOnlyList<List<IntVar>> spans, out string detail)
+    {
+        int areaBefore = CpSatPacker.Area(request, before);
+        int heightBefore = CpSatPacker.Height(request, before);
+        int areaUpper = CategoryPacking.AreaUpperBound(request);
+        bool allRequired = request.Items.All(i => i.Required);
+        long heightWeight = request.Height + 1L;
+        LinearExpr space = allRequired ? top
+            : top + (areaUpper - area) * heightWeight;
+        long spaceBefore = heightBefore + (allRequired ? 0
+            : (areaUpper - areaBefore) * heightWeight);
+        int lowerHeight = Array.FindIndex(CpSatPacker.AvailableCells(request),
+            a => a >= areaBefore);
+        bool spaceOptimal = areaBefore == areaUpper && heightBefore == lowerHeight;
+        if (spaceOptimal) { model.Add(space == spaceBefore); }
+        var objectives = new List<PackingObjective>
+        {
+            new(space, request.Height + (allRequired ? 0 : areaUpper * heightWeight),
+                spaceBefore, "space", spaceOptimal),
+        };
+        var signatures = new HashSet<string>();
+        var notes = new List<string>();
+        bool precedingFixed = spaceOptimal;
+        for (int level = 0; level < spans.Count; level++)
+        {
+            string label = level.ToString(CultureInfo.InvariantCulture);
+            string signature = string.Join(",", spans[level].Select(v => v.Index)
+                .OrderBy(index => index));
+            if (!signatures.Add(signature)) { notes.Add(label + "=shared"); }
+            LinearExpr expression = LinearExpr.Sum(spans[level]);
+            long current = CategoryPacking.Span(request, before, level);
+            long upper = CategoryPacking.UpperBound(request, level);
+            long lower = spaceOptimal
+                ? CategoryPacking.LowerBound(request, areaBefore, level) : 0;
+            model.Add(expression >= lower);
+            bool fixedValue = upper == lower || (current == lower && precedingFixed);
+            if (fixedValue)
+            {
+                model.Add(expression == current);
+                notes.Add(label + "=bound");
+            }
+            objectives.Add(new PackingObjective(expression, upper, current,
+                label, fixedValue));
+            precedingFixed &= fixedValue;
+        }
+        detail = "layers=" + spans.Count
+            + (notes.Count == 0 ? "" : ", " + string.Join(",", notes));
+        return objectives;
     }
 }

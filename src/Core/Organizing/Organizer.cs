@@ -242,35 +242,45 @@ public sealed class Organizer
         }
     }
 
-    /// <summary>逐网格排布。放不下全部物品或布局与现状相同的网格不动。</summary>
+    /// <summary>全部网格共同规划，再逐网格校验与提交；物品归属保持不变。</summary>
     private async Task PackAsync(OrganizeReport report)
     {
         ItemSnapshot root = ReadSnapshot(report);
         IReadOnlyList<GridPackJob> jobs = PackPlanner.Plan(root, ParseTag);
-        foreach (GridPackJob job in jobs)
+        if (jobs.Count == 0) { return; }
+        PackRequest[] requests = jobs.Select(job => job.Request).ToArray();
+        double seconds = _budget.Available(false);
+        var elapsed = Stopwatch.StartNew();
+        ContainerPackResult result = await Task.Run(() => _packer is CachedPacker cached
+            ? cached.PackAll(requests, seconds)
+            : new GlobalPacker(_packer).Pack(requests, seconds));
+        RecordSolve(false, elapsed.Elapsed.TotalSeconds, "全部容器",
+            result.Diagnostic, result.Warning, report);
+        for (int i = 0; i < jobs.Count; i++)
         {
+            GridPackJob job = jobs[i];
             string where = $"{job.Container.Name} 网格 {job.GridIndex}";
-            PackResult packed = await SolveAsync(job.Request, where, report);
+            PackResult packed = result.Grids[i];
+            Placement[] changed = Changed(job, packed.Placements).ToArray();
+            var before = new PackResult(job.Request.Current,
+                System.Array.Empty<PackItem>());
+            report.Diagnostics.Add($"global-result {where}: "
+                + $"area={CpSatPacker.Area(job.Request, packed)}, "
+                + $"rows={CpSatPacker.Height(job.Request, before)}"
+                + $"->{CpSatPacker.Height(job.Request, packed)}, "
+                + $"category-span={CategoryPacking.Describe(job.Request, before)}"
+                + $"->{CategoryPacking.Describe(job.Request, packed)}, "
+                + $"score={CategoryPacking.Score(job.Request, before)}"
+                + $"->{CategoryPacking.Score(job.Request, packed)}, "
+                + $"changed={changed.Length}");
             if (!packed.Complete)
             {
                 report.Warnings.Add(
                     $"{where} 排布放不下 {packed.Unplaced.Count} 件，保持原样");
                 continue;
             }
-            await ApplyAsync(job, Changed(job, packed.Placements), report);
+            await ApplyAsync(job, changed, report);
         }
-    }
-
-    /// <summary>收纳与排布共用 3 秒预算，单次最多 1 秒；纯数据在后台求解。</summary>
-    private async Task<PackResult> SolveAsync(
-        PackRequest request, string where, OrganizeReport report)
-    {
-        double seconds = _budget.Available(false);
-        var elapsed = Stopwatch.StartNew();
-        PackResult result = await Task.Run(() => _packer.Pack(request, seconds));
-        RecordSolve(false, elapsed.Elapsed.TotalSeconds, where,
-            result.Diagnostic, result.Warning, report);
-        return result;
     }
 
     private void RecordSolve(bool collecting, double seconds, string where,

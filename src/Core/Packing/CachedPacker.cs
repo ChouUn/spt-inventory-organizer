@@ -9,8 +9,32 @@ public sealed class CachedPacker : IPacker
 {
     private readonly IPacker _inner;
     private readonly List<Entry> _entries = new();
+    private FinalEntry? _final;
 
     public CachedPacker(IPacker inner) => _inner = inner;
+
+    /// <summary>全部最终网格共同缓存，输入和输出位置均匹配时不重复联合求解。</summary>
+    public ContainerPackResult PackAll(IReadOnlyList<PackRequest> requests,
+        double seconds)
+    {
+        PackRequest[] keys = requests.Select(Normalize).ToArray();
+        if (_final != null && _final.Input.Length == keys.Length
+            && _final.Seconds >= seconds && keys.Select((key, i) =>
+                Same(key, _final.Input[i]) || Same(key, _final.Output[i])).All(x => x))
+        {
+            return _final.Result with { Diagnostic = "global skip=unchanged-input" };
+        }
+        ContainerPackResult result = new GlobalPacker(_inner).Pack(requests, seconds);
+        if (result.Warning == null && result.Grids.All(g => g.Complete))
+        {
+            _final = new FinalEntry(keys, keys.Select((key, i) => key with
+            {
+                Current = result.Grids[i].Placements
+                    .OrderBy(p => p.Id, StringComparer.Ordinal).ToArray(),
+            }).ToArray(), result, seconds);
+        }
+        return result;
+    }
 
     public PackResult Pack(PackRequest request, double maxSeconds = 1)
     {
@@ -68,4 +92,6 @@ public sealed class CachedPacker : IPacker
         && a.Current.SequenceEqual(b.Current);
 
     private sealed record Entry(PackRequest Request, PackResult Result, double Seconds);
+    private sealed record FinalEntry(PackRequest[] Input, PackRequest[] Output,
+        ContainerPackResult Result, double Seconds);
 }

@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Numerics;
 
 namespace ChouUn.InventoryOrganizer.Core.Packing;
 
@@ -58,22 +59,39 @@ public static class CategoryPacking
         Enumerable.Range(0, Depth(request)).Select(d => Span(request, result, d))
             .ToArray();
 
-    /// <summary>同层跨网格求和，再按层级比较；不把父子跨度混成一个分数。</summary>
+    /// <summary>先算各网格完整分数，再求和；与联合模型使用相同目标。</summary>
     internal static int Compare(IReadOnlyList<PackRequest> requests,
         ContainerPackResult next, ContainerPackResult before)
+        => requests.Select((r, i) =>
+                Score(r, next.Grids[i]) - Score(r, before.Grids[i]))
+            .Aggregate(BigInteger.Zero, (sum, difference) => sum + difference).Sign;
+
+    internal static int Compare(PackRequest request, PackResult next, PackResult before)
     {
-        for (int d = 0; d < requests.Max(Depth); d++)
+        for (int d = 0; d < Depth(request); d++)
         {
-            int difference = requests.Select((r, i) => Span(r, next.Grids[i], d)
-                - Span(r, before.Grids[i], d)).Sum();
+            int difference = Span(request, next, d) - Span(request, before, d);
             if (difference != 0) { return difference; }
         }
         return 0;
     }
 
-    internal static int Compare(PackRequest request, PackResult next, PackResult before)
-        => Compare(new[] { request }, new ContainerPackResult(new[] { next }),
-            new ContainerPackResult(new[] { before }));
+    /// <summary>仅用本网格的类别上界确定倍率；任意精度避免深层类别溢出。</summary>
+    internal static BigInteger Score(PackRequest request, PackResult result)
+    {
+        BigInteger score = CpSatPacker.Height(request, result)
+            + (long)(AreaUpperBound(request) - CpSatPacker.Area(request, result))
+                * (request.Height + 1L);
+        for (int level = 0; level < Depth(request); level++)
+        {
+            score = score * (UpperBound(request, level) + 1)
+                + Span(request, result, level);
+        }
+        return score;
+    }
+
+    internal static long UpperBound(PackRequest request, int level) =>
+        (request.Height - 1L) * Groups(request, level).Count();
 
     /// <summary>
     /// 由必留面积和其他类别的最大供给量推导每类不可避免的面积。

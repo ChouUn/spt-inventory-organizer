@@ -29,14 +29,12 @@ public sealed class PackBudgetTests
     }
 
     [Fact]
-    public void 收纳余量结转且单次最多一秒()
+    public void 收纳余量一次结转给全局最终排布()
     {
         var budget = new PackBudget();
         budget.Charge(true, 0.4);
-        Assert.Equal(1, budget.Available(false));
-        budget.Charge(false, 1);
-        Assert.Equal(1, budget.Available(false));
-        budget.Charge(false, 1);
-        Assert.Equal(0.6, budget.Available(false), 6);
+        Assert.Equal(2.6, budget.Available(false), 6);
+        budget.Charge(false, 2.7);
+        Assert.Equal(0, budget.Available(false));
     }
 }

@@ -193,7 +193,7 @@ public sealed class CollectPackingTests
     }
 
     [Fact]
-    public async Task 多网格共用三秒预算_后续预算归零_求解不在调用上下文()
+    public async Task 多网格先统一准备保底_不逐个分配搜索时间_求解不在调用上下文()
     {
         var port = new PackingPort();
         for (int i = 0; i < 4; i++)
@@ -206,10 +206,10 @@ public sealed class CollectPackingTests
         OrganizeReport report = await new Organizer(port, packer).RunAsync();
 
         Assert.Equal(4, packer.Budgets.Count);
-        Assert.All(packer.Budgets, b => Assert.InRange(b, 0, 1));
-        Assert.Equal(0, packer.Budgets.Last());
+        Assert.All(packer.Budgets, b => Assert.Equal(0, b));
         Assert.All(packer.Contexts, Assert.Null);
-        Assert.InRange(report.PackPlanningMilliseconds, 3000, 6000);
+        Assert.Single(report.Diagnostics, d => d.Contains("stage=final"));
+        Assert.Contains(report.Diagnostics, d => d.Contains("allotted=3.000s"));
     }
 
     private sealed class BudgetPacker : IPacker
@@ -221,10 +221,6 @@ public sealed class CollectPackingTests
         {
             Budgets.Add(maxSeconds);
             Contexts.Add(SynchronizationContext.Current);
-            if (maxSeconds > 0)
-            {
-                Thread.Sleep((int)Math.Ceiling(maxSeconds * 1000));
-            }
             return new HeuristicPacker().Pack(request);
         }
     }

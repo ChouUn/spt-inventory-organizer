@@ -2,7 +2,7 @@ using System;
 
 namespace ChouUn.InventoryOrganizer.Core.Organizing;
 
-/// <summary>收纳最多用 2 秒，最终排布使用整次 3 秒的余量，每次最多 1 秒。</summary>
+/// <summary>收纳每次最多 1 秒、合计 2 秒；最终联合排布使用整次 3 秒的余量。</summary>
 public sealed class PackBudget
 {
     public double CollectionSeconds { get; private set; }
@@ -11,7 +11,8 @@ public sealed class PackBudget
     public double Remaining(bool collecting) => Math.Max(0,
         collecting ? 2 - CollectionSeconds : 3 - CollectionSeconds - FinalSeconds);
 
-    public double Available(bool collecting) => Math.Min(1, Remaining(collecting));
+    public double Available(bool collecting) => collecting
+        ? Math.Min(1, Remaining(true)) : Remaining(false);
 
     public void Charge(bool collecting, double seconds)
     {

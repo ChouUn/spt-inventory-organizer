@@ -12,6 +12,8 @@ SPT 一键整理仓库 mod 的项目文档。
   多网格收纳、阶段预算与堆叠规划优化实施进度
 - [plans/category-grouping.md](plans/category-grouping.md)：类别占用行跨度的全局优化
 - [plans/packing-identity.md](plans/packing-identity.md)：等价物品求解与原位身份映射
+- [plans/weighted-grouping.md](plans/weighted-grouping.md)：类别目标去重与联合加权
+- [plans/global-packing.md](plans/global-packing.md)：最终排布统一规划全部容器
 
 ## 调研报告
 

@@ -82,6 +82,72 @@ internal sealed class GameInventoryPort : IInventoryPort
         return PortResult.Fail("没有可用位置");
     }
 
+    public IReadOnlyList<StackSnapshot> ReadStacks(string containerId)
+    {
+        if (!_items.TryGetValue(containerId, out Item target)
+            || target is not CompoundItem container
+            || container.PinLockState == EItemPinLockState.Locked)
+        {
+            return Array.Empty<StackSnapshot>();
+        }
+        return container.Grids.SelectMany(grid => grid.Items)
+            .Where(item => item.StackMaxSize > 1 && item.StackObjectsCount > 0)
+            .Select(item => new StackSnapshot(
+                item.Id, item.StringTemplateId,
+                item.StackObjectsCount, item.StackMaxSize,
+                SnapshotReader.ToLockState(item.PinLockState)))
+            .ToArray();
+    }
+
+    public bool CanStack(string sourceId, string targetId)
+    {
+        return _items.TryGetValue(sourceId, out Item source)
+            && _items.TryGetValue(targetId, out Item target)
+            && source.IsSameItem(target);
+    }
+
+    /// <summary>
+    /// IsSameItem 保留游戏当前生效的同类判定（含 FiR 兼容补丁），
+    /// TransferOrMerge 校验双方限制及容量；不调用任何排序入口。
+    /// </summary>
+    public async Task<StackMergeResult> MergeAsync(string sourceId, string targetId)
+    {
+        if (!_items.TryGetValue(sourceId, out Item source)
+            || !_items.TryGetValue(targetId, out Item target)
+            || source.CurrentAddress is null || target.CurrentAddress is null)
+        {
+            return new StackMergeResult(0, 0, 0, "堆叠已不在整理范围内");
+        }
+        int before = source.StackObjectsCount;
+        if (source.PinLockState != EItemPinLockState.Free
+            || target.PinLockState == EItemPinLockState.Locked
+            || !source.IsSameItem(target))
+        {
+            return new StackMergeResult(
+                0, before, target.StackObjectsCount, "锁定或不同类的堆叠");
+        }
+        OperationResult<ITransferOrMergeResult> simulated =
+            ItemManipulator.TransferOrMerge(
+                source, target, _controller, simulate: true);
+        if (simulated.Failed)
+        {
+            return new StackMergeResult(
+                0, before, target.StackObjectsCount, Describe(simulated.Error));
+        }
+        PortResult committed = await CommitAsync(simulated);
+        int remaining = source.CurrentAddress is null ? 0 : source.StackObjectsCount;
+        if (committed.Succeeded && remaining == 0)
+        {
+            _items.Remove(sourceId);
+        }
+        int transferred = committed.Succeeded ? before - remaining : 0;
+        Plugin.Log.LogInfo(
+            $"merge {sourceId} -> {targetId}: {transferred} transferred, " +
+            $"source {remaining}, target {target.StackObjectsCount}");
+        return new StackMergeResult(
+            transferred, remaining, target.StackObjectsCount, committed.Error);
+    }
+
     /// <summary>
     /// 与原生排序同一套路：在内存里摘下要动的物品，按布局放回，回滚到原状，
     /// 再把记录了目标地址的结果交给事务；事务会重放这些地址并把位置同步给服务端。

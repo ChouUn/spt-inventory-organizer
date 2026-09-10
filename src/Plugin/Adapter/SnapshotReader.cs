@@ -80,7 +80,7 @@ internal static class SnapshotReader
         return node.Category.Select(id => id.Localized()).ToList();
     }
 
-    private static LockState ToLockState(EItemPinLockState state)
+    internal static LockState ToLockState(EItemPinLockState state)
     {
         switch (state)
         {

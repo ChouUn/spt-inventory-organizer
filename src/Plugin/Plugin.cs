@@ -35,7 +35,7 @@ public sealed class Plugin : BaseUnityPlugin
             uiFixes?.Instance.GetType().Assembly);
         Logger.LogInfo(removed
             ? $"UIFixes {uiFixes!.Metadata.Version}: StackFirstPatch removed; " +
-              "other patches and settings preserved; stacking pending step 8"
+              "other patches and settings preserved; organizer owns stacking"
             : "UIFixes not installed; organizer owns sorting");
         new GridSortPanelSortPatch().Enable();
         new LayoutDiagnosticsPatch("ExecuteInternal").Enable();

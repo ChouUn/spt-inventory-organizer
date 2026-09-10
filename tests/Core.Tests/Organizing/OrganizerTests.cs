@@ -117,6 +117,14 @@ public sealed class OrganizerTests
 
         public ItemSnapshot ReadSnapshot() => Snapshot;
 
+        public IReadOnlyList<StackSnapshot> ReadStacks(string containerId) =>
+            System.Array.Empty<StackSnapshot>();
+
+        public bool CanStack(string sourceId, string targetId) => false;
+
+        public Task<StackMergeResult> MergeAsync(string sourceId, string targetId) =>
+            throw new System.InvalidOperationException("本测试没有可堆叠物品");
+
         public Task<PortResult> FoldAsync(string itemId)
         {
             Folded.Add(itemId);

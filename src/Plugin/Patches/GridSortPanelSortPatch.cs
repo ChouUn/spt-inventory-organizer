@@ -62,7 +62,8 @@ internal sealed class GridSortPanelSortPatch : ModulePatch
             Notify(report);
             Plugin.Log.LogInfo(
                 $"timing: organize {stopwatch.ElapsedMilliseconds} ms, " +
-                $"pack planning {report.PackPlanningMilliseconds} ms");
+                $"pack planning {report.PackPlanningMilliseconds} ms, " +
+                $"merge transactions {report.MergeMilliseconds} ms");
         }
         catch (Exception ex)
         {
@@ -80,13 +81,15 @@ internal sealed class GridSortPanelSortPatch : ModulePatch
     {
         Plugin.Log.LogInfo(
             $"organize: folded {report.Folded}, moved {report.Moved}, " +
-            $"packed {report.Packed}, warnings {report.Warnings.Count}, " +
+            $"merged {report.Merged}, packed {report.Packed}, " +
+            $"warnings {report.Warnings.Count}, " +
             $"failures {report.Failures.Count}");
         foreach (string line in report.Warnings.Concat(report.Failures))
         {
             Plugin.Log.LogWarning(line);
         }
-        string text = $"已折叠 {report.Folded} 件，收纳 {report.Moved} 件，" +
+        string text = $"已折叠 {report.Folded} 件，合并 {report.Merged} 次，" +
+                      $"收纳 {report.Moved} 件，" +
                       $"排布 {report.Packed} 个网格";
         int problems = report.Warnings.Count + report.Failures.Count;
         if (problems > 0)

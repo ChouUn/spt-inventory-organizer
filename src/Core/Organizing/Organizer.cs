@@ -8,22 +8,25 @@ using ChouUn.InventoryOrganizer.Core.Tags;
 
 namespace ChouUn.InventoryOrganizer.Core.Organizing;
 
-/// <summary>按固定顺序驱动整理：折叠、收纳、排布。每个阶段开始前重新读快照。</summary>
+/// <summary>按固定顺序驱动折叠、合并、收纳、排布，每个阶段前读取最新快照。</summary>
 public sealed class Organizer
 {
     private readonly IInventoryPort _port;
     private readonly IPacker _packer;
+    private readonly StackMerger _merger;
 
     public Organizer(IInventoryPort port, IPacker packer)
     {
         _port = port;
         _packer = packer;
+        _merger = new StackMerger(port);
     }
 
     public async Task<OrganizeReport> RunAsync()
     {
         var report = new OrganizeReport();
         await FoldAsync(report);
+        await _merger.MergeContainersAsync(_port.ReadSnapshot(), report);
         await CollectAsync(report);
         await PackAsync(report);
         return report;
@@ -46,8 +49,8 @@ public sealed class Organizer
     }
 
     /// <summary>
-    /// 规则按优先级逐条执行，每条规则把仍未收走且匹配的候选依次试着移入自己的容器。
-    /// 放不进去的物品留给后面的规则；全部规则试完仍在的物品留在原地。
+    /// 规则按优先级逐条执行，匹配后先补充已有堆叠，再尝试移入剩余物品。
+    /// 放不进去的剩余数量留给后面的规则；全部规则试完仍在的物品留在原地。
     /// 这里贪心地用游戏找到的第一个空位，容器内的碎片留给排布阶段处理。
     /// </summary>
     private async Task CollectAsync(OrganizeReport report)
@@ -68,7 +71,7 @@ public sealed class Organizer
             foreach (ItemSnapshot item in remaining)
             {
                 bool moved = RuleMatcher.Matches(destination.Rule, item)
-                    && await TryMoveAsync(item, destination.Container);
+                    && await TryMoveAsync(root.Id, item, destination.Container, report);
                 if (moved)
                 {
                     report.Moved++;
@@ -82,8 +85,13 @@ public sealed class Organizer
         }
     }
 
-    private async Task<bool> TryMoveAsync(ItemSnapshot item, ItemSnapshot container)
+    private async Task<bool> TryMoveAsync(
+        string rootId, ItemSnapshot item, ItemSnapshot container, OrganizeReport report)
     {
+        if (await _merger.TopUpAsync(rootId, item.Id, container.Id, report))
+        {
+            return true;
+        }
         PortResult result = await _port.MoveAsync(item.Id, container.Id);
         return result.Succeeded;
     }
@@ -150,6 +158,10 @@ public sealed class OrganizeReport
     public int Moved { get; set; }
 
     public int Packed { get; set; }
+
+    public int Merged { get; set; }
+
+    public long MergeMilliseconds { get; set; }
 
     public long PackPlanningMilliseconds { get; set; }
 

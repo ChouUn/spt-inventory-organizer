@@ -58,10 +58,19 @@ public static class CollectPlanner
 
     private static IEnumerable<ItemSnapshot> Descendants(ItemSnapshot item)
     {
+        // Locked 子树不作为收纳目的地，也不发起向内部堆叠补充数量的尝试。
+        if (item.Lock == LockState.Locked)
+        {
+            yield break;
+        }
         foreach (GridSnapshot grid in item.Grids)
         {
             foreach (ItemSnapshot child in grid.Items)
             {
+                if (child.Lock == LockState.Locked)
+                {
+                    continue;
+                }
                 yield return child;
                 foreach (ItemSnapshot deeper in Descendants(child))
                 {

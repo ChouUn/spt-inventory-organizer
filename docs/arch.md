@@ -22,8 +22,8 @@ tag 语法与各阶段算法的精确契约放 `feats/`，实施顺序放 `plans
 - 纯算法与游戏隔离：解析、匹配、调度、排布不依赖 Unity 与游戏程序集，
   能在普通 .NET 测试里跑。
 - 先模拟再落地：任何变更先经游戏的 simulate 校验，通过后才提交。
-- 阶段顺序固定：折叠、收纳、排布的先后由编排层固定，阶段之间不互相调用。
-- 合并堆叠也由编排层驱动，具体范围与执行时机在该功能的设计中确定。
+- 阶段顺序固定：折叠、容器内合并、收纳、排布由编排层统一驱动。
+  收纳在放置物品前先补充目标已有堆叠，合并规则见需求 F8。
 - 求解器可替换：CP-SAT 与启发式实现同一装箱接口，启发式同时是退路。
 - 游戏规则只问游戏：可折叠、锁、容器过滤的判定来自游戏，本 mod 不维护清单。
 
@@ -44,6 +44,7 @@ tag 语法与各阶段算法的精确契约放 `feats/`，实施顺序放 `plans
 | TagGrammar | Core | tag 文本解析为规则列表；错误带位置，供编辑提示使用 |
 | Matching | Core | 规则表达式对物品描述求值 |
 | Collector | Core | 按规则优先级全局调度，决定每个物品进哪个容器 |
+| StackMerger | Core | 编排容器内合并和收纳时的补充，兼容性与数量由游戏确认 |
 | Packing | Core | 装箱接口；CpSat 实现处理大件，Heuristic 实现处理 1×1 与退路 |
 | Orchestrator | Core | 统一驱动整理各阶段：取快照、算计划、模拟、提交 |
 | Ports | Core | 编排层对外的接口：读快照、模拟与执行变更、提交事务、通知 |
@@ -64,6 +65,8 @@ flowchart TB
     subgraph Core[ChouUn.InventoryOrganizer.Core]
         Orchestrator --> Ports
         Orchestrator --> Collector
+        Orchestrator --> StackMerger
+        StackMerger --> Ports
         Collector --> Matching
         Collector --> Packing
         Patches --> TagGrammar
@@ -82,16 +85,18 @@ flowchart TB
 ## 数据流：一次整理
 
 用户点击容器面板上的排序按钮，触发对该容器的整理。
-下图描述折叠、收纳与排布的主流程；合并堆叠的插入时机待其功能设计确定。
+阶段之间读取最新快照，使后续收纳与排布使用合并后仍然存在的物品。
 
 ```mermaid
 flowchart TB
     Click[Patches 截获排序按钮] --> Snap[GameAdapter 读快照]
     Snap --> Fold[阶段一：折叠计划，逐项模拟并提交]
-    Fold --> Collect[阶段二：Collector 收纳计划，逐项模拟并提交]
-    Collect --> Pack[阶段三：Packing 逐容器排布，逐项模拟并提交]
+    Fold --> Merge[阶段二：容器内合并，逐项模拟并提交]
+    Merge --> Collect[阶段三：按规则先补充堆叠，再收纳余量]
+    Collect --> Pack[阶段四：Packing 逐容器排布，逐项模拟并提交]
     Pack --> Notify[通知结果：成功数与失败项]
     Fold -. 异常 .-> Abort[中止并通知]
+    Merge -. 异常 .-> Abort
     Collect -. 异常 .-> Abort
     Pack -. 异常 .-> Abort
 ```
@@ -100,6 +105,8 @@ flowchart TB
 - Collector 决定「进哪个容器」时可向 Packing 询问可行性，
   排布阶段再决定「放在哪」。两阶段的具体配合方式属于算法设计，不在本文约束。
 - Pinned 与 Locked 物品在快照中标出，Collector 与 Packing 都把它们当作固定占位。
+- 合并读取容器直属堆叠的最新数量，并按游戏事务的实际结果继续处理。
+  Pinned 只接收数量补充，Locked 子树跳过；不会调用 UIFixes 的合并或排序流程。
 - 每项变更先由 GameAdapter 以 simulate 模式执行，通过才提交为一次网络事务。
   未通过模拟的单项放弃并记入结果，阶段继续；只有异常才中止整理。
 

@@ -2,7 +2,6 @@ using System.Collections.Generic;
 using System.Linq;
 using ChouUn.InventoryOrganizer.Core.Inventory;
 using ChouUn.InventoryOrganizer.Core.Packing;
-using ChouUn.InventoryOrganizer.Core.Tags;
 
 namespace ChouUn.InventoryOrganizer.Core.Organizing;
 
@@ -25,26 +24,11 @@ public static class PackPlanner
     public static IReadOnlyList<GridPackJob> Plan(ItemSnapshot root)
     {
         var jobs = new List<GridPackJob>();
-        AddContainer(root, jobs);
-        AddTaggedDescendants(root, jobs);
-        return jobs;
-    }
-
-    private static void AddTaggedDescendants(
-        ItemSnapshot container, List<GridPackJob> jobs)
-    {
-        foreach (ItemSnapshot child in container.Grids.SelectMany(grid => grid.Items))
+        foreach (ItemSnapshot container in OrganizeScope.Containers(root))
         {
-            if (child.Lock == LockState.Locked)
-            {
-                continue;
-            }
-            if (HasValidRules(child))
-            {
-                AddContainer(child, jobs);
-            }
-            AddTaggedDescendants(child, jobs);
+            AddContainer(container, jobs);
         }
+        return jobs;
     }
 
     private static void AddContainer(ItemSnapshot container, List<GridPackJob> jobs)
@@ -80,15 +64,5 @@ public static class PackPlanner
         return position.Rotated
             ? new FixedBlock(position.X, position.Y, item.Height, item.Width)
             : new FixedBlock(position.X, position.Y, item.Width, item.Height);
-    }
-
-    private static bool HasValidRules(ItemSnapshot item)
-    {
-        if (item.Tag is null)
-        {
-            return false;
-        }
-        TagParseResult parsed = TagParser.Parse(item.Tag);
-        return parsed.IsValid && parsed.Rules.Count > 0;
     }
 }

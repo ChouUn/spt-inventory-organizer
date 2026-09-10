@@ -1,5 +1,7 @@
+using System.Collections.Generic;
 using System.Threading.Tasks;
 using ChouUn.InventoryOrganizer.Core.Inventory;
+using ChouUn.InventoryOrganizer.Core.Packing;
 
 namespace ChouUn.InventoryOrganizer.Core.Organizing;
 
@@ -19,6 +21,13 @@ public interface IInventoryPort
     /// 把物品移入目标容器中第一个接受它且有空位的网格；没有这样的网格时失败。
     /// </summary>
     Task<PortResult> MoveAsync(string itemId, string containerId);
+
+    /// <summary>
+    /// 把网格里给定的 Free 物品挪到新位置，其余物品原地不动。
+    /// 任一位置放不下则整个网格保持原样并失败。
+    /// </summary>
+    Task<PortResult> ArrangeAsync(
+        string containerId, int gridIndex, IReadOnlyList<Placement> placements);
 }
 
 public sealed record PortResult(bool Succeeded, string? Error)

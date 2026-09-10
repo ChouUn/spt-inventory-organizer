@@ -4,6 +4,7 @@ using System.Linq;
 using System.Reflection;
 using ChouUn.InventoryOrganizer.Adapter;
 using ChouUn.InventoryOrganizer.Core.Organizing;
+using ChouUn.InventoryOrganizer.Core.Packing;
 using EFT.Communications;
 using EFT.InventoryLogic;
 using EFT.UI.DragAndDrop;
@@ -13,11 +14,12 @@ using SPT.Reflection.Patching;
 namespace ChouUn.InventoryOrganizer.Patches;
 
 /// <summary>
-/// 接管容器面板的排序按钮。确认框由游戏保留，确认后进入整理。
-/// 整理结束后仍执行原生排序作为收尾，直到排布阶段落地。
+/// 接管容器面板的排序按钮。确认框由游戏保留，确认后进入整理，不再执行原生排序。
 /// </summary>
 internal sealed class GridSortPanelSortPatch : ModulePatch
 {
+    internal static bool IsOrganizing { get; private set; }
+
     private static readonly AccessTools.FieldRef<GridSortPanel, CompoundItem> ItemField
         = Field<CompoundItem>("_item");
 
@@ -37,33 +39,40 @@ internal sealed class GridSortPanelSortPatch : ModulePatch
     [PatchPrefix]
     private static bool Prefix(GridSortPanel __instance)
     {
+        if (IsOrganizing)
+        {
+            return false;
+        }
         OrganizeAsync(__instance);
         return false;
     }
 
     private static async void OrganizeAsync(GridSortPanel panel)
     {
+        IsOrganizing = true;
         try
         {
             CompoundItem root = ItemField(panel);
             InventoryController controller = ControllerField(panel);
             panel.ChangeProgress(inProgress: true);
             var stopwatch = Stopwatch.StartNew();
-            var organizer = new Organizer(new GameInventoryPort(root, controller));
+            var organizer = new Organizer(
+                new GameInventoryPort(root, controller), new HeuristicPacker());
             OrganizeReport report = await organizer.RunAsync();
-            long organizeMs = stopwatch.ElapsedMilliseconds;
-            panel.ChangeProgress(inProgress: false);
             Notify(report);
-            await panel.SortAsync();
-            long sortMs = stopwatch.ElapsedMilliseconds - organizeMs;
             Plugin.Log.LogInfo(
-                $"timing: organize {organizeMs} ms, native sort {sortMs} ms");
+                $"timing: organize {stopwatch.ElapsedMilliseconds} ms, " +
+                $"pack planning {report.PackPlanningMilliseconds} ms");
         }
         catch (Exception ex)
         {
-            panel.ChangeProgress(inProgress: false);
             Plugin.Log.LogError(ex);
             NotificationManager.DisplayWarningNotification($"整理失败：{ex.Message}");
+        }
+        finally
+        {
+            IsOrganizing = false;
+            panel.ChangeProgress(inProgress: false);
         }
     }
 
@@ -71,12 +80,14 @@ internal sealed class GridSortPanelSortPatch : ModulePatch
     {
         Plugin.Log.LogInfo(
             $"organize: folded {report.Folded}, moved {report.Moved}, " +
-            $"warnings {report.Warnings.Count}, failures {report.Failures.Count}");
+            $"packed {report.Packed}, warnings {report.Warnings.Count}, " +
+            $"failures {report.Failures.Count}");
         foreach (string line in report.Warnings.Concat(report.Failures))
         {
             Plugin.Log.LogWarning(line);
         }
-        string text = $"已折叠 {report.Folded} 件，收纳 {report.Moved} 件";
+        string text = $"已折叠 {report.Folded} 件，收纳 {report.Moved} 件，" +
+                      $"排布 {report.Packed} 个网格";
         int problems = report.Warnings.Count + report.Failures.Count;
         if (problems > 0)
         {

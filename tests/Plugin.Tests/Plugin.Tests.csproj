@@ -1,0 +1,25 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <AssemblyName>ChouUn.InventoryOrganizer.Plugin.Tests</AssemblyName>
+    <IsPackable>false</IsPackable>
+    <BepInExCoreDir>$(SPT_DIR)\BepInEx\core\</BepInExCoreDir>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- 链接实际兼容实现，使用游戏安装的 Harmony，不加载 Unity 或游戏程序集。 -->
+    <Compile Include="../../src/Plugin/Compatibility/UIFixesCompatibility.cs"
+             Link="UIFixesCompatibility.cs" />
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.12.0" />
+    <PackageReference Include="xunit" Version="2.9.2" />
+    <PackageReference Include="xunit.runner.visualstudio"
+                      Version="2.8.2" PrivateAssets="all" />
+    <Reference Include="0Harmony" HintPath="$(BepInExCoreDir)0Harmony.dll" />
+    <Reference Include="MonoMod.RuntimeDetour"
+               HintPath="$(BepInExCoreDir)MonoMod.RuntimeDetour.dll" />
+    <Reference Include="MonoMod.Utils"
+               HintPath="$(BepInExCoreDir)MonoMod.Utils.dll" />
+    <Reference Include="Mono.Cecil" HintPath="$(BepInExCoreDir)Mono.Cecil.dll" />
+  </ItemGroup>
+
+</Project>

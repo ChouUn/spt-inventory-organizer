@@ -65,7 +65,7 @@ public sealed class CpSatPackerTests
     }
 
     [Fact]
-    public void 同等紧凑仍执行常规排序_再次整理布局稳定()
+    public void 同类布局已紧凑时保留身份位置_再次整理布局稳定()
     {
         var request = new PackRequest(4, 2, Array.Empty<FixedBlock>(), new[]
         {
@@ -82,8 +82,8 @@ public sealed class CpSatPackerTests
 
         PackResult result = new CpSatPacker().Pack(request, maxSeconds: 0);
 
-        Assert.Equal(new HeuristicPacker().Pack(request).Placements, result.Placements);
-        Assert.NotEqual(request.Current, result.Placements);
+        Assert.Equal(request.Current.OrderBy(p => p.Id),
+            result.Placements.OrderBy(p => p.Id));
         PackResult repeated = new CpSatPacker().Pack(
             request with { Current = result.Placements }, maxSeconds: 0);
         Assert.Equal(result.Placements, repeated.Placements);

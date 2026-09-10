@@ -22,6 +22,7 @@
     <ProjectReference Include="..\..\src\Core\Core.csproj" />
     <EmbeddedResource Include="Packing\Fixtures\current-stash.csv" />
     <EmbeddedResource Include="Packing\Fixtures\hierarchy-stash.csv" />
+    <EmbeddedResource Include="Packing\Fixtures\hierarchy-junk.csv" />
   </ItemGroup>
 
 </Project>

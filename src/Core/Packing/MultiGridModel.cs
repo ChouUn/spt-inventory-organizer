@@ -69,6 +69,7 @@ internal static class MultiGridModel
         {
             model.Add(LinearExpr.Sum(item.Select(r => r.Rect.Present)) <= 1);
         }
+        PackingSymmetry.Add(model, requests, rectangles, baseline);
         for (int group = 0; group < singleGroups.Count; group++)
         {
             SingleGroup singles = singleGroups[group];

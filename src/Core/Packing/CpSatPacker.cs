@@ -11,6 +11,15 @@ public sealed class CpSatPacker : IPacker
     public PackResult Pack(PackRequest request, double maxSeconds = 1)
     {
         var elapsed = Stopwatch.StartNew();
+        var identity = new PackingIdentity(new[] { request });
+        PackResult result = PackAnonymous(identity.Requests[0],
+            Math.Max(0, maxSeconds - elapsed.Elapsed.TotalSeconds));
+        return identity.Restore(new ContainerPackResult(new[] { result })).Grids[0];
+    }
+
+    private static PackResult PackAnonymous(PackRequest request, double maxSeconds)
+    {
+        var elapsed = Stopwatch.StartNew();
         PackResult baseline = Baseline(request);
         string originalSpan = CategoryPacking.Describe(request, baseline);
         if (maxSeconds > 0 && CategoryPacking.Depth(request) > 0)
@@ -163,7 +172,7 @@ public sealed class CpSatPacker : IPacker
             $"baseline-area={Area(request, baseline)}, " +
             $"category-span={CategoryPacking.Describe(request, baseline)}, " +
             $"unplaced={baseline.Unplaced.Count}, " +
-            $"changed={changed}, " +
+            $"baseline-slot-changes={changed}, " +
             FormattableString.Invariant($"budget={seconds:F3}s");
     }
 

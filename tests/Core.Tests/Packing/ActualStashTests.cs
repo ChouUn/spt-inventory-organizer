@@ -14,6 +14,25 @@ public sealed class ActualStashTests
     public ActualStashTests(ITestOutputHelper output) => _output = output;
 
     [Fact]
+    public void 实际垃圾箱去身份后保持层级质量且减少实际移动()
+    {
+        PackRequest request = Read("hierarchy-junk.csv", 14, 14);
+
+        PackResult result = new CpSatPacker().Pack(request, 1);
+
+        _output.WriteLine(result.Diagnostic);
+        Assert.True(result.Complete);
+        Assert.Equal(134, CpSatPackerTests.Area(request, result));
+        Assert.Equal(10, Height(request, result));
+        int[] spans = CategoryPacking.Spans(request, result);
+        Assert.True(spans[0] < 8 || (spans[0] == 8 && spans[1] <= 10),
+            result.Diagnostic);
+        Assert.True(result.Placements.Count(p => !request.Current.Contains(p)) <= 94,
+            result.Diagnostic);
+        CpSatPackerTests.AssertValid(request, result);
+    }
+
+    [Fact]
     public void 刚整理后的真实仓库继续改善父类聚合且空间不退步()
     {
         PackRequest request = Read("hierarchy-stash.csv");
@@ -91,7 +110,8 @@ public sealed class ActualStashTests
             : request.Items.Single(i => i.Id == p.Id).Height));
 
     // 存档位置 + 运行时模组模板 + 游戏/Foldables 尺寸公式，匿名化身份与分类。
-    private static PackRequest Read(string fixture = "current-stash.csv")
+    internal static PackRequest Read(string fixture = "current-stash.csv",
+        int width = 10, int height = 72)
     {
         using Stream stream = typeof(ActualStashTests).Assembly
             .GetManifestResourceStream(typeof(ActualStashTests).Namespace
@@ -104,7 +124,7 @@ public sealed class ActualStashTests
             ? Array.Empty<string>() : row[2].Split('/'));
         int[][] rows = data.Select(row => row.Select((value, index) =>
             index == 2 ? 0 : int.Parse(value)).ToArray()).ToArray();
-        return new PackRequest(10, 72, rows.Where(r => r[8] != 0)
+        return new PackRequest(width, height, rows.Where(r => r[8] != 0)
             .Select(r => new FixedBlock(r[5], r[6],
                 r[7] != 0 ? r[4] : r[3], r[7] != 0 ? r[3] : r[4])).ToArray(),
             rows.Where(r => r[8] == 0).Select(r =>

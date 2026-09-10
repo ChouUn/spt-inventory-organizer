@@ -50,6 +50,8 @@ internal static class CpSatModel
             }
         }
         LinearExpr area = LinearExpr.Sum(terms);
+        PackingSymmetry.Add(model, new[] { request }, variables.Select(r => (0, r)),
+            new ContainerPackResult(new[] { baseline }));
         model.Add(area >= CpSatPacker.Area(request, baseline));
         // 只扣除 top 以内的障碍，底部固定容器不能使上方压实目标恒为仓库高度。
         IntVar available = model.NewIntVar(0,

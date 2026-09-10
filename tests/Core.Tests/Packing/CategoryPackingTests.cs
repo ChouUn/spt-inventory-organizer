@@ -34,9 +34,12 @@ public sealed class CategoryPackingTests
     }
 
     [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public void 混合尺寸全局最优与穷举的空间及层级目标一致(bool hierarchy)
+    [InlineData(false, false)]
+    [InlineData(true, false)]
+    [InlineData(false, true)]
+    [InlineData(true, true)]
+    public void 混合尺寸全局最优与穷举的空间及层级目标一致(
+        bool hierarchy, bool equivalent)
     {
         PackItem[] items =
         {
@@ -50,6 +53,10 @@ public sealed class CategoryPackingTests
             items[2] = items[2] with { CategoryPath = new[] { "weapon", "shotgun" } };
             items[3] = items[3] with { CategoryPath = new[] { "gear", "bag" } };
         }
+        if (equivalent)
+        {
+            items[1] = items[0] with { Id = "b" };
+        }
         var request = new PackRequest(3, 3, Array.Empty<FixedBlock>(), items);
         var occupied = new bool[3, 3];
         var placed = new List<Placement>();
@@ -58,7 +65,8 @@ public sealed class CategoryPackingTests
 
         PackResult result = new CpSatPacker().Pack(request);
 
-        Assert.Contains("cp-sat Optimal", result.Diagnostic);
+        Assert.True(result.Diagnostic.Contains("cp-sat Optimal")
+            || result.Diagnostic.Contains("skip=optimum-bound"), result.Diagnostic);
         Assert.Equal(optimum, (CpSatPackerTests.Height(request, result),
             CategoryPacking.Span(request, result),
             CategoryPacking.Span(request, result, 1)));

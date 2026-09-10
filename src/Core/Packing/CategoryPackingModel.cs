@@ -101,6 +101,8 @@ internal static class CategoryPackingModel
         {
             model.Add(LinearExpr.Sum(item.Select(r => r.Present)) <= 1);
         }
+        PackingSymmetry.Add(model, requests, grids.SelectMany((g, index) =>
+            g.Select(r => (index, r))), baseline);
         // 分阶段锁定已证明的高层目标，避免多层大权重溢出及浮点目标精度损失。
         long heightWeight = requests.Sum(r => (long)r.Height) + 1;
         LinearExpr space = LinearExpr.Sum(tops) - LinearExpr.Sum(areas) * heightWeight;

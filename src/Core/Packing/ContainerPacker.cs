@@ -19,7 +19,15 @@ public sealed class ContainerPacker
 
     public ContainerPacker(IPacker single) => _single = single;
 
-    public ContainerPackResult Pack(
+    public ContainerPackResult Pack(IReadOnlyList<PackRequest> requests, double seconds)
+    {
+        var elapsed = Stopwatch.StartNew();
+        var identity = new PackingIdentity(requests);
+        return identity.Restore(PackAnonymous(identity.Requests,
+            System.Math.Max(0, seconds - elapsed.Elapsed.TotalSeconds)));
+    }
+
+    private ContainerPackResult PackAnonymous(
         IReadOnlyList<PackRequest> requests, double seconds)
     {
         var elapsed = Stopwatch.StartNew();

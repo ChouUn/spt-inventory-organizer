@@ -120,9 +120,10 @@ internal static class CpSatModel
         overlap.AddRectangle(
             model.NewOptionalIntervalVar(x, width, endX, present, item.Id + "-ix"),
             model.NewOptionalIntervalVar(y, height, endY, present, item.Id + "-iy"));
-        return new Rectangle(item, x, y, rotated, present);
+        return new Rectangle(item, x, y, rotated, present, endX, endY);
     }
 
     internal sealed record Rectangle(
-        PackItem Item, IntVar X, IntVar Y, BoolVar Rotated, BoolVar Present);
+        PackItem Item, IntVar X, IntVar Y, BoolVar Rotated, BoolVar Present,
+        IntVar EndX, IntVar EndY);
 }

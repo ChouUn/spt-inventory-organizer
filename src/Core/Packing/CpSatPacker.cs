@@ -12,14 +12,26 @@ public sealed class CpSatPacker : IPacker
     {
         var elapsed = Stopwatch.StartNew();
         PackResult baseline = Baseline(request);
+        string originalSpan = CategoryPacking.Describe(request, baseline);
+        if (maxSeconds > 0 && CategoryPacking.Depth(request) > 0)
+        {
+            baseline = CategoryPacking.Seed(request, baseline);
+        }
         int area = Area(request, baseline);
         long[] available = AvailableCells(request);
         int lowerHeight = Array.FindIndex(available, cells => cells >= area);
         string facts = Describe(request, baseline, maxSeconds, lowerHeight);
+        bool categories = CategoryPacking.Depth(request) > 0;
+        bool optimum = !baseline.Unplaced.Any(i => i.Required)
+            && area == CategoryPacking.AreaUpperBound(request)
+            && Enumerable.Range(0, CategoryPacking.Depth(request)).All(d =>
+                CategoryPacking.Span(request, baseline, d)
+                    == CategoryPacking.LowerBound(request, area, d));
         string? skip = maxSeconds <= 0 ? "budget-exhausted"
-            : request.Items.All(i => i.Width == 1 && i.Height == 1)
+            : !categories && request.Items.All(i => i.Width == 1 && i.Height == 1)
                 ? "only-single-cells"
-            : baseline.Complete && Height(request, baseline) == lowerHeight
+            : optimum
+                && Height(request, baseline) == lowerHeight
                 ? "optimum-bound" : null;
         if (skip != null)
         {
@@ -37,8 +49,12 @@ public sealed class CpSatPacker : IPacker
                     Diagnostic = $"skip=budget-after-baseline; {facts}",
                 };
             }
-            PackResult? solved = CpSatModel.Solve(request, baseline, remaining,
-                out string status);
+            string status;
+            PackResult? solved = categories
+                ? CategoryPackingModel.Solve(new[] { request },
+                    new ContainerPackResult(new[] { baseline }), remaining,
+                    out status)?.Grids[0]
+                : CpSatModel.Solve(request, baseline, remaining, out status);
             PackResult best = solved != null && Better(request, solved, baseline)
                 ? solved : baseline;
             return best with
@@ -46,7 +62,9 @@ public sealed class CpSatPacker : IPacker
                 Diagnostic = $"cp-sat {status}, {elapsed.ElapsedMilliseconds} ms, " +
                     $"area {area}->{Area(request, best)}, " +
                     $"movable-rows {Height(request, baseline)}" +
-                    $"->{Height(request, best)}; "
+                    $"->{Height(request, best)}, " +
+                    $"category-span {originalSpan}" +
+                    $"->{CategoryPacking.Describe(request, best)}; "
                     + facts,
             };
         }
@@ -94,7 +112,9 @@ public sealed class CpSatPacker : IPacker
         }
         int difference = Area(request, next) - Area(request, before);
         return difference > 0 || (difference == 0
-            && Height(request, next) < Height(request, before));
+            && (Height(request, next) < Height(request, before)
+                || (Height(request, next) == Height(request, before)
+                    && CategoryPacking.Compare(request, next, before) < 0)));
     }
 
     internal static int Area(PackRequest request, PackResult result)
@@ -137,9 +157,11 @@ public sealed class CpSatPacker : IPacker
             $"large={request.Items.Count(i => i.Width != 1 || i.Height != 1)}, " +
             $"fixed={request.Fixed.Count}, fixed-bottom={fixedBottom}, " +
             $"current-movable-rows={Height(request, current)}, " +
+            $"current-category-span={CategoryPacking.Describe(request, current)}, " +
             $"baseline-movable-rows={Height(request, baseline)}, " +
             $"lower={lowerHeight}, " +
             $"baseline-area={Area(request, baseline)}, " +
+            $"category-span={CategoryPacking.Describe(request, baseline)}, " +
             $"unplaced={baseline.Unplaced.Count}, " +
             $"changed={changed}, " +
             FormattableString.Invariant($"budget={seconds:F3}s");

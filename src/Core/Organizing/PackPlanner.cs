@@ -70,6 +70,7 @@ public static class PackPlanner
         return new PackItem(item.Id, item.TemplateId, item.Width, item.Height)
         {
             Required = true,
+            CategoryPath = item.CategoryPath,
         };
     }
 

@@ -50,7 +50,7 @@ public sealed class ContainerPackerTests
             .Select(i => new PackItem("bar" + i, "t", 1, 3)).ToArray();
         PackItem[] items = new[] { square }.Concat(bars).ToArray();
         var requests = new[] { Grid(3, 3, items), Grid(2, 2, items) };
-        var packer = new ContainerPacker(new CpSatPacker());
+        var packer = new ContainerPacker(new CachedPacker(new CpSatPacker()));
 
         ContainerPackResult baseline = packer.Pack(requests, 0);
         ContainerPackResult result = packer.Pack(requests, 1);

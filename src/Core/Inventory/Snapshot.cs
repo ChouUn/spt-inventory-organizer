@@ -38,4 +38,8 @@ public sealed record ItemSnapshot(
     bool Folded,
     LockState Lock,
     string? Tag,
-    IReadOnlyList<GridSnapshot> Grids);
+    IReadOnlyList<GridSnapshot> Grids)
+{
+    public IReadOnlyList<string> CategoryPath { get; init; } =
+        System.Array.Empty<string>();
+}

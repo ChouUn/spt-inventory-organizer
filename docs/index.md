@@ -10,6 +10,7 @@ SPT 一键整理仓库 mod 的项目文档。
 - [plans/mvp.md](plans/mvp.md)：MVP 实施计划
 - [plans/collection-optimization.md](plans/collection-optimization.md)：
   多网格收纳、阶段预算与堆叠规划优化实施进度
+- [plans/category-grouping.md](plans/category-grouping.md)：类别占用行跨度的全局优化
 
 ## 调研报告
 

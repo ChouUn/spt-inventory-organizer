@@ -20,6 +20,8 @@ internal sealed class GridSortPanelSortPatch : ModulePatch
 {
     internal static bool IsOrganizing { get; private set; }
 
+    private static readonly IPacker Packer = new CachedPacker(new CpSatPacker());
+
     private static readonly AccessTools.FieldRef<GridSortPanel, CompoundItem> ItemField
         = Field<CompoundItem>("_item");
 
@@ -57,7 +59,7 @@ internal sealed class GridSortPanelSortPatch : ModulePatch
             panel.ChangeProgress(inProgress: true);
             var stopwatch = Stopwatch.StartNew();
             var organizer = new Organizer(
-                new GameInventoryPort(root, controller), new CpSatPacker());
+                new GameInventoryPort(root, controller), Packer);
             OrganizeReport report = await organizer.RunAsync();
             Notify(report);
             Plugin.Log.LogInfo(

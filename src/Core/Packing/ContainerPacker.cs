@@ -49,14 +49,17 @@ public sealed class ContainerPacker
         }
         var baseline = new ContainerPackResult(grids);
         double remaining = seconds - elapsed.Elapsed.TotalSeconds;
-        if (_single is not CpSatPacker || remaining <= 0)
+        if ((_single is not CpSatPacker && _single is not CachedPacker)
+            || remaining <= 0)
         {
             return baseline with { Diagnostic = "container skip=budget-or-heuristic" };
         }
         try
         {
-            ContainerPackResult? solved = MultiGridModel.Solve(
-                requests, baseline, remaining, out string status);
+            string status;
+            ContainerPackResult? solved = CategoryPacking.HasCategories(requests)
+                ? CategoryPackingModel.Solve(requests, baseline, remaining, out status)
+                : MultiGridModel.Solve(requests, baseline, remaining, out status);
             ContainerPackResult best = solved != null
                 && Better(requests, solved, baseline)
                 ? solved : baseline;
@@ -66,7 +69,8 @@ public sealed class ContainerPacker
                     $"{elapsed.ElapsedMilliseconds} ms, grids={requests.Count}, " +
                     $"area {Area(requests, baseline)}->{Area(requests, best)}, " +
                     $"movable-rows-sum {Height(requests, baseline)}" +
-                    $"->{Height(requests, best)}",
+                    $"->{Height(requests, best)}, " +
+                    $"category-span {Span(requests, baseline)}->{Span(requests, best)}",
             };
         }
         catch (Exception ex) when (ex is DllNotFoundException
@@ -91,8 +95,16 @@ public sealed class ContainerPacker
         }
         int difference = Area(requests, next) - Area(requests, before);
         return difference > 0 || (difference == 0
-            && Height(requests, next) < Height(requests, before));
+            && (Height(requests, next) < Height(requests, before)
+                || (Height(requests, next) == Height(requests, before)
+                    && CategoryPacking.Compare(requests, next, before) < 0)));
     }
+
+    private static string Span(
+        IReadOnlyList<PackRequest> requests, ContainerPackResult result) =>
+        "[" + string.Join(",", Enumerable.Range(0, requests.Max(CategoryPacking.Depth))
+            .Select(d => requests.Select((r, i) =>
+                CategoryPacking.Span(r, result.Grids[i], d)).Sum())) + "]";
 
     internal static int Area(
         IReadOnlyList<PackRequest> requests, ContainerPackResult result) =>

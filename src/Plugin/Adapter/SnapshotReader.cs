@@ -29,7 +29,28 @@ internal static class SnapshotReader
             foldable != null && foldable.Folded,
             ToLockState(item.PinLockState),
             Tag(item),
-            Grids(item));
+            Grids(item))
+        {
+            CategoryPath = CategoryPath(item),
+        };
+    }
+
+    /// <summary>保留手册完整类别链，按顶层到直属类别传给层级聚合。</summary>
+    private static IReadOnlyList<string> CategoryPath(Item item)
+    {
+        Handbook? handbook = Singleton<Handbook>.Instance;
+        if (handbook?.AllNodes == null || !handbook.AllNodes.TryGetValue(
+            item.StringTemplateId, out HandbookNode node))
+        {
+            return Array.Empty<string>();
+        }
+        var path = new List<string>();
+        for (HandbookNode? parent = node.Parent; parent != null; parent = parent.Parent)
+        {
+            path.Add(parent.Data.Id);
+        }
+        path.Reverse();
+        return path;
     }
 
     private static GridPosition? Position(Item item)

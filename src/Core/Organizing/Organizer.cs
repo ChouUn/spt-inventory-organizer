@@ -163,7 +163,10 @@ public sealed class Organizer
         {
             Items = job.Request.Items.Concat(candidates.Values
                 .Where(i => _port.CanMoveToGrid(i.Id, container.Id, job.GridIndex))
-                .Select(i => new PackItem(i.Id, i.TemplateId, i.Width, i.Height)))
+                .Select(i => new PackItem(i.Id, i.TemplateId, i.Width, i.Height)
+                {
+                    CategoryPath = i.CategoryPath,
+                }))
                 .ToArray(),
         }).ToArray();
         if (!requests.Any(r => r.Items.Any(i => !i.Required)))

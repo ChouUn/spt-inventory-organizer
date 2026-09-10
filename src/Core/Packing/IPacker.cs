@@ -7,6 +7,10 @@ public sealed record PackItem(string Id, string TemplateId, int Width, int Heigh
 {
     /// <summary>目标容器原有物品必须保留；新收纳候选可以不选中。</summary>
     public bool Required { get; init; }
+
+    /// <summary>从顶层到直属类别的 ID 链；未知时为空，不计聚合目标。</summary>
+    public IReadOnlyList<string> CategoryPath { get; init; } =
+        System.Array.Empty<string>();
 }
 
 /// <summary>网格里已被固定物品占住的矩形，尺寸已按其当前转置展开。</summary>

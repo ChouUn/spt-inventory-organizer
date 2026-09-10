@@ -11,6 +11,11 @@ namespace ChouUn.InventoryOrganizer.Core.Packing;
 public sealed class HeuristicPacker : IPacker
 {
     public PackResult Pack(PackRequest request, double maxSeconds = 1)
+        => PackOrdered(request, Order(request.Items));
+
+    /// <summary>按给定次序构造合法提示，最终仍比较面积、高度和聚合。</summary>
+    internal static PackResult PackOrdered(PackRequest request,
+        IEnumerable<PackItem> order)
     {
         var occupied = new bool[request.Width, request.Height];
         foreach (FixedBlock block in request.Fixed)
@@ -20,7 +25,7 @@ public sealed class HeuristicPacker : IPacker
 
         var placements = new List<Placement>();
         var unplaced = new List<PackItem>();
-        foreach (PackItem item in Order(request.Items))
+        foreach (PackItem item in order)
         {
             if (TryPlace(occupied, item, out Placement placement))
             {

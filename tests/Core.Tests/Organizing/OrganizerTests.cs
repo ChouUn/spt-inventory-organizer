@@ -10,6 +10,32 @@ namespace ChouUn.StashMaster.Core.Tests.Organizing;
 
 public sealed class OrganizerTests
 {
+#if DEBUG
+    [Fact]
+    public async Task 对比观察的是落位前输入和最终规划结果()
+    {
+        ItemSnapshot item = CollectPlannerTests.Leaf("far", LockState.Free)
+            with { Position = new GridPosition(9, 9, false) };
+        var port = new FakePort { Snapshot = CollectPlannerTests.Root(item) };
+        var organizer = new Organizer(port, new HeuristicPacker());
+        int observed = 0;
+        organizer.FinalPackPlanned = (jobs, result, milliseconds) =>
+        {
+            Assert.Empty(port.Arranged);
+            Assert.Equal(9, Assert.Single(jobs).Request.Current[0].Y);
+            Assert.Equal(0, Assert.Single(result.Grids[0].Placements).Y);
+            Assert.True(milliseconds >= 0);
+            observed++;
+        };
+
+        OrganizeReport report = await organizer.RunAsync();
+
+        Assert.Equal(1, observed);
+        Assert.Equal(1, report.Packed);
+        Assert.Empty(report.Failures);
+    }
+#endif
+
     [Fact]
     public async Task 折叠阶段逐项执行并汇总失败()
     {

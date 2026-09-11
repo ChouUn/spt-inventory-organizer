@@ -22,4 +22,20 @@
     <Reference Include="Mono.Cecil" HintPath="$(BepInExCoreDir)Mono.Cecil.dll" />
   </ItemGroup>
 
+  <ItemGroup Condition="'$(Configuration)' == 'Debug'">
+    <Reference Include="netstandard"
+      HintPath="$(SPT_DIR)\EscapeFromTarkov_Data\Managed\netstandard.dll" />
+    <Compile Include="../../src/Plugin/Diagnostics/SortSimulation.cs"
+             Link="SortSimulation.cs" />
+    <Compile Include="../../src/Plugin/Diagnostics/NativeGridSearch.cs"
+             Link="NativeGridSearch.cs" />
+    <ProjectReference Include="../../src/Core/Core.csproj" />
+    <Reference Include="Assembly-CSharp"
+      HintPath="$(SPT_DIR)\EscapeFromTarkov_Data\Managed\Assembly-CSharp.dll" />
+    <Reference Include="Comfort"
+      HintPath="$(SPT_DIR)\EscapeFromTarkov_Data\Managed\Comfort.dll" />
+    <Reference Include="UnityEngine.CoreModule"
+      HintPath="$(SPT_DIR)\EscapeFromTarkov_Data\Managed\UnityEngine.CoreModule.dll" />
+  </ItemGroup>
+
 </Project>

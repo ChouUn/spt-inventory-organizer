@@ -60,10 +60,21 @@ internal sealed class GridSortPanelSortPatch : ModulePatch
             var stopwatch = Stopwatch.StartNew();
             var organizer = new Organizer(
                 new GameInventoryPort(root, controller), Packer);
+#if DEBUG
+            var benchmark = new Diagnostics.NativeSortBenchmark(root);
+            organizer.FinalPackPlanned = benchmark.Compare;
+#endif
             OrganizeReport report = await organizer.RunAsync();
+            double organizeMs = stopwatch.Elapsed.TotalMilliseconds;
+#if DEBUG
+            organizeMs -= benchmark.Milliseconds;
+            Plugin.Log.LogInfo(
+                $"timing: debug sort-benchmark {benchmark.Milliseconds:F2} ms " +
+                "(excluded from organize and solver budget)");
+#endif
             Notify(report);
             Plugin.Log.LogInfo(
-                $"timing: organize {stopwatch.ElapsedMilliseconds} ms, " +
+                $"timing: organize {organizeMs:F0} ms, " +
                 $"pack planning {report.PackPlanningMilliseconds} ms, " +
                 $"merge transactions {report.MergeMilliseconds} ms");
         }

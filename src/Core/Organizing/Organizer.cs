@@ -18,6 +18,12 @@ public sealed class Organizer
     private PackBudget _budget = new();
     private readonly Dictionary<string, TagParseResult> _tags = new();
 
+#if DEBUG
+    // 只在最终规划后观察同一输入与结果；Release 不包含基准入口。
+    public System.Action<IReadOnlyList<GridPackJob>, ContainerPackResult, double>?
+        FinalPackPlanned { get; set; }
+#endif
+
     public Organizer(IInventoryPort port, IPacker packer)
     {
         _port = port;
@@ -254,8 +260,12 @@ public sealed class Organizer
         ContainerPackResult result = await Task.Run(() => _packer is CachedPacker cached
             ? cached.PackAll(requests, seconds)
             : new GlobalPacker(_packer).Pack(requests, seconds));
+        elapsed.Stop();
         RecordSolve(false, elapsed.Elapsed.TotalSeconds, "全部容器",
             result.Diagnostic, result.Warning, report);
+#if DEBUG
+        FinalPackPlanned?.Invoke(jobs, result, elapsed.Elapsed.TotalMilliseconds);
+#endif
         for (int i = 0; i < jobs.Count; i++)
         {
             GridPackJob job = jobs[i];

@@ -1,6 +1,6 @@
 using System.Linq;
 
-namespace ChouUn.InventoryOrganizer.Core.Tags;
+namespace ChouUn.StashMaster.Core.Tags;
 
 /// <summary>把规则复述成人可读的文字，用于保存 tag 时的成功提示。</summary>
 public static class RuleDescriber

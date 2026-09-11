@@ -2,11 +2,11 @@ using System;
 using System.Linq;
 using System.Reflection;
 using System.Runtime.CompilerServices;
-using ChouUn.InventoryOrganizer.Compatibility;
+using ChouUn.StashMaster.Compatibility;
 using HarmonyLib;
 using Xunit;
 
-namespace ChouUn.InventoryOrganizer.Plugin.Tests;
+namespace ChouUn.StashMaster.Plugin.Tests;
 
 public sealed class SortingCompatibilityTests
 {

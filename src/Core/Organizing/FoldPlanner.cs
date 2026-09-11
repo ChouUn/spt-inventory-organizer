@@ -1,7 +1,7 @@
 using System.Collections.Generic;
-using ChouUn.InventoryOrganizer.Core.Inventory;
+using ChouUn.StashMaster.Core.Inventory;
 
-namespace ChouUn.InventoryOrganizer.Core.Organizing;
+namespace ChouUn.StashMaster.Core.Organizing;
 
 /// <summary>
 /// 折叠计划：根容器之内所有可折叠、尚未折叠且未被 Locked 的物品，含嵌套容器里的。

@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 
-namespace ChouUn.InventoryOrganizer.Core.Packing;
+namespace ChouUn.StashMaster.Core.Packing;
 
 /// <summary>每项对应一个网格；同一可选物品可出现在多个允许进入的网格中。</summary>
 public sealed record ContainerPackResult(IReadOnlyList<PackResult> Grids)

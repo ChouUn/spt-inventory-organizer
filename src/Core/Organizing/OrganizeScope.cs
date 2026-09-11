@@ -1,9 +1,9 @@
 using System.Collections.Generic;
 using System.Linq;
-using ChouUn.InventoryOrganizer.Core.Inventory;
-using ChouUn.InventoryOrganizer.Core.Tags;
+using ChouUn.StashMaster.Core.Inventory;
+using ChouUn.StashMaster.Core.Tags;
 
-namespace ChouUn.InventoryOrganizer.Core.Organizing;
+namespace ChouUn.StashMaster.Core.Organizing;
 
 /// <summary>容器内整理的共同范围：根与带有效规则的子容器，跳过 Locked 子树。</summary>
 public static class OrganizeScope

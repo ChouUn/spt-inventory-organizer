@@ -1,4 +1,4 @@
-# inventory-organizer
+# Stash Master
 
 面向 SPT 4.1.x 的客户端 mod，使用游戏原有的排序按钮一键整理仓库。
 通过容器 tag 指定收纳规则，结合自动折叠、合并堆叠和容器内排布，减少手工整理。

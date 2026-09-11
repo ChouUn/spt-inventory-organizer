@@ -3,15 +3,15 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 using System.Threading.Tasks;
-using ChouUn.InventoryOrganizer.Core.Inventory;
-using ChouUn.InventoryOrganizer.Core.Organizing;
-using ChouUn.InventoryOrganizer.Core.Packing;
+using ChouUn.StashMaster.Core.Inventory;
+using ChouUn.StashMaster.Core.Organizing;
+using ChouUn.StashMaster.Core.Packing;
 using Comfort.Common;
 using Diz.LanguageExtensions;
 using EFT;
 using EFT.InventoryLogic;
 
-namespace ChouUn.InventoryOrganizer.Adapter;
+namespace ChouUn.StashMaster.Adapter;
 
 /// <summary>用游戏 API 实现编排层的出口：先模拟，再交给网络事务执行并同步。</summary>
 internal sealed class GameInventoryPort : IInventoryPort

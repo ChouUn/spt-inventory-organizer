@@ -2,7 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 
-namespace ChouUn.InventoryOrganizer.Core.Packing;
+namespace ChouUn.StashMaster.Core.Packing;
 
 /// <summary>
 /// 首次适配递减：大件先放，逐格扫描第一个能放的位置。

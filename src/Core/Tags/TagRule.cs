@@ -1,6 +1,6 @@
 using System.Collections.Generic;
 
-namespace ChouUn.InventoryOrganizer.Core.Tags;
+namespace ChouUn.StashMaster.Core.Tags;
 
 /// <summary>
 /// 一条 <c>@o[#order] [expr;]</c> 规则。<see cref="Expression"/> 为 null 表示兜底。

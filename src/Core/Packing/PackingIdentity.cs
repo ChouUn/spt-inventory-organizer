@@ -2,7 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 
-namespace ChouUn.InventoryOrganizer.Core.Packing;
+namespace ChouUn.StashMaster.Core.Packing;
 
 /// <summary>等价组使用匿名位置槽，布局完成后按原位优先映射真实身份。</summary>
 internal sealed class PackingIdentity

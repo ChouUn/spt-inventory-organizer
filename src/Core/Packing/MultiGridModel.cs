@@ -5,7 +5,7 @@ using System.Globalization;
 using System.Linq;
 using Google.OrTools.Sat;
 
-namespace ChouUn.InventoryOrganizer.Core.Packing;
+namespace ChouUn.StashMaster.Core.Packing;
 
 /// <summary>各网格独立避让，共同约束物品唯一归属；单格按允许网格集合计数。</summary>
 internal static class MultiGridModel

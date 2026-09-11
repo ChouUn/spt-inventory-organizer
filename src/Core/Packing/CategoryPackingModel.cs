@@ -5,7 +5,7 @@ using System.Globalization;
 using System.Linq;
 using Google.OrTools.Sat;
 
-namespace ChouUn.InventoryOrganizer.Core.Packing;
+namespace ChouUn.StashMaster.Core.Packing;
 
 /// <summary>各网格内部加权空间与类别跨度，再累加分数共同求解。</summary>
 internal static class CategoryPackingModel

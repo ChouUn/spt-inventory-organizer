@@ -1,6 +1,6 @@
 using System.Collections.Generic;
 
-namespace ChouUn.InventoryOrganizer.Core.Packing;
+namespace ChouUn.StashMaster.Core.Packing;
 
 /// <summary>待排布的物品，尺寸为未转置的格子数。</summary>
 public sealed record PackItem(string Id, string TemplateId, int Width, int Height)

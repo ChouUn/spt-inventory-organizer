@@ -1,3 +1,3 @@
 using System.Runtime.CompilerServices;
 
-[assembly: InternalsVisibleTo("ChouUn.InventoryOrganizer.Core.Tests")]
+[assembly: InternalsVisibleTo("ChouUn.StashMaster.Core.Tests")]

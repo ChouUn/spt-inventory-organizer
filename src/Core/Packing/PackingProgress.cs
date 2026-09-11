@@ -6,7 +6,7 @@ using System.Numerics;
 using System.Threading;
 using Google.OrTools.Sat;
 
-namespace ChouUn.InventoryOrganizer.Core.Packing;
+namespace ChouUn.StashMaster.Core.Packing;
 
 /// <summary>完整布局连续 0.5 秒无改善即停搜；首次可行解前不计停滞时间。</summary>
 internal sealed class PackingProgress : IDisposable

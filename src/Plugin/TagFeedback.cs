@@ -1,9 +1,9 @@
 using System.Collections.Generic;
 using System.Linq;
-using ChouUn.InventoryOrganizer.Core.Tags;
+using ChouUn.StashMaster.Core.Tags;
 using EFT.Communications;
 
-namespace ChouUn.InventoryOrganizer;
+namespace ChouUn.StashMaster;
 
 /// <summary>把 tag 解析结果变成游戏内通知。</summary>
 internal static class TagFeedback

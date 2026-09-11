@@ -1,11 +1,11 @@
 using System;
 using System.IO;
 using System.Linq;
-using ChouUn.InventoryOrganizer.Core.Packing;
+using ChouUn.StashMaster.Core.Packing;
 using Xunit;
 using Xunit.Abstractions;
 
-namespace ChouUn.InventoryOrganizer.Core.Tests.Packing;
+namespace ChouUn.StashMaster.Core.Tests.Packing;
 
 public sealed class ActualStashTests
 {

@@ -2,14 +2,14 @@ using System.IO;
 using BepInEx;
 using BepInEx.Bootstrap;
 using BepInEx.Logging;
-using ChouUn.InventoryOrganizer.Compatibility;
-using ChouUn.InventoryOrganizer.Patches;
+using ChouUn.StashMaster.Compatibility;
+using ChouUn.StashMaster.Patches;
 using EFT.UI.DragAndDrop;
 using HarmonyLib;
 
-namespace ChouUn.InventoryOrganizer;
+namespace ChouUn.StashMaster;
 
-[BepInPlugin("com.chouun.inventoryorganizer", "Inventory Organizer", "0.1.0")]
+[BepInPlugin("com.chouun.stashmaster", "Stash Master", "0.1.0")]
 [BepInDependency(
     UIFixesCompatibility.PluginId, BepInDependency.DependencyFlags.SoftDependency)]
 public sealed class Plugin : BaseUnityPlugin

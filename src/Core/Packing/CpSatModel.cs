@@ -5,7 +5,7 @@ using System.Globalization;
 using System.Linq;
 using Google.OrTools.Sat;
 
-namespace ChouUn.InventoryOrganizer.Core.Packing;
+namespace ChouUn.StashMaster.Core.Packing;
 
 /// <summary>可转置矩形模型；单格只建数量变量，求解后用启发式填入空格。</summary>
 internal static class CpSatModel

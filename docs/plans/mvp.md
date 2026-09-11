@@ -30,7 +30,7 @@ Pinned 与 Locked 物品原地不动。
 - Plugin.Tests 链接实际兼容源码并使用本机 Harmony，独立验证补丁共存与精确移除，
   不加载 Unity 或游戏程序集；完整 Plugin 仍通过解决方案构建检查。
 - Plugin 用 RID win-x64，OR-Tools 原生库随构建进入输出目录，整目录部署到
-  `BepInEx/plugins/ChouUn.InventoryOrganizer/`。游戏程序集经 `SPT_DIR` 引用，不入库。
+  `BepInEx/plugins/ChouUn.StashMaster/`。游戏程序集经 `SPT_DIR` 引用，不入库。
 - Bootstrap 在 Awake 最早处按绝对路径 LoadLibraryEx 加载原生入口，
   使用 DLL_LOAD_DIR 与 DEFAULT_DIRS 从插件目录解析依赖。
   游戏内延迟求解曾出现入口加载失败，不能仅依赖启动时设置全局搜索目录。

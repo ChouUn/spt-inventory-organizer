@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 
-namespace ChouUn.InventoryOrganizer.Core.Packing;
+namespace ChouUn.StashMaster.Core.Packing;
 
 /// <summary>以启发式保底，限时优化大件，再填充 1×1 空位。</summary>
 public sealed class CpSatPacker : IPacker

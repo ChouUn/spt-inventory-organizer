@@ -1,8 +1,8 @@
 using System;
 using System.Linq;
-using ChouUn.InventoryOrganizer.Core.Inventory;
+using ChouUn.StashMaster.Core.Inventory;
 
-namespace ChouUn.InventoryOrganizer.Core.Tags;
+namespace ChouUn.StashMaster.Core.Tags;
 
 /// <summary>按 docs/feats/tag-grammar.md 的原子语义判断物品是否匹配规则。</summary>
 public static class RuleMatcher

@@ -1,8 +1,8 @@
 using System.Linq;
-using ChouUn.InventoryOrganizer.Core.Tags;
+using ChouUn.StashMaster.Core.Tags;
 using Xunit;
 
-namespace ChouUn.InventoryOrganizer.Core.Tests.Tags;
+namespace ChouUn.StashMaster.Core.Tests.Tags;
 
 public sealed class TagParserTests
 {

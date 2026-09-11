@@ -1,6 +1,6 @@
 using System.Collections.Generic;
 
-namespace ChouUn.InventoryOrganizer.Core.Tags;
+namespace ChouUn.StashMaster.Core.Tags;
 
 /// <summary>解析错误。<see cref="Fragment"/> 是出错位置附近的原文。</summary>
 public sealed record TagError(int RuleIndex, string Message, string Fragment);

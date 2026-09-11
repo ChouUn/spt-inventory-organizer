@@ -3,7 +3,7 @@ using System.Linq;
 using System.Numerics;
 using Google.OrTools.Sat;
 
-namespace ChouUn.InventoryOrganizer.Core.Packing;
+namespace ChouUn.StashMaster.Core.Packing;
 
 /// <summary>网格内按优先级加权，再累加；超大总分按进位精确拆分。</summary>
 internal sealed record PackingObjective(

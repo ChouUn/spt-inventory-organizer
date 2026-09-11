@@ -2,16 +2,16 @@ using System;
 using System.Diagnostics;
 using System.Linq;
 using System.Reflection;
-using ChouUn.InventoryOrganizer.Adapter;
-using ChouUn.InventoryOrganizer.Core.Organizing;
-using ChouUn.InventoryOrganizer.Core.Packing;
+using ChouUn.StashMaster.Adapter;
+using ChouUn.StashMaster.Core.Organizing;
+using ChouUn.StashMaster.Core.Packing;
 using EFT.Communications;
 using EFT.InventoryLogic;
 using EFT.UI.DragAndDrop;
 using HarmonyLib;
 using SPT.Reflection.Patching;
 
-namespace ChouUn.InventoryOrganizer.Patches;
+namespace ChouUn.StashMaster.Patches;
 
 /// <summary>
 /// 接管容器面板的排序按钮。确认框由游戏保留，确认后进入整理，不再执行原生排序。

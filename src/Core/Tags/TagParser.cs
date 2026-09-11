@@ -2,7 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Globalization;
 
-namespace ChouUn.InventoryOrganizer.Core.Tags;
+namespace ChouUn.StashMaster.Core.Tags;
 
 /// <summary>按 docs/feats/tag-grammar.md 解析 tag 文本。</summary>
 public static class TagParser

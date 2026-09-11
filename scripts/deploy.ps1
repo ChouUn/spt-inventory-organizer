@@ -1,5 +1,5 @@
 #Requires -Version 7
-# 把 Plugin 的构建产物复制到 SPT 的 BepInEx/plugins/ChouUn.InventoryOrganizer/。
+# 把 Plugin 的构建产物复制到 SPT 的 BepInEx/plugins/ChouUn.StashMaster/。
 param(
     [string]$SptDir = $env:SPT_DIR,
     [string]$Configuration = 'Debug'
@@ -12,7 +12,7 @@ if (Get-Process EscapeFromTarkov -ErrorAction SilentlyContinue) {
 }
 
 $src = Join-Path $PSScriptRoot "../src/Plugin/bin/$Configuration"
-$dst = Join-Path $SptDir 'BepInEx/plugins/ChouUn.InventoryOrganizer'
+$dst = Join-Path $SptDir 'BepInEx/plugins/ChouUn.StashMaster'
 New-Item -ItemType Directory -Force $dst | Out-Null
 Copy-Item -Path (Join-Path $src '*') -Destination $dst -Recurse -Force
 Get-ChildItem $dst | Select-Object Name, Length

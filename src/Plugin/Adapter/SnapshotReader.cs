@@ -1,13 +1,13 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using ChouUn.InventoryOrganizer.Core.Inventory;
+using ChouUn.StashMaster.Core.Inventory;
 using Comfort.Common;
 using EFT;
 using EFT.HandBook;
 using EFT.InventoryLogic;
 
-namespace ChouUn.InventoryOrganizer.Adapter;
+namespace ChouUn.StashMaster.Adapter;
 
 /// <summary>把游戏里的物品树读成纯数据快照。</summary>
 internal static class SnapshotReader

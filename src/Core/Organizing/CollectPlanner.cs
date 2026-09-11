@@ -1,9 +1,9 @@
 using System.Collections.Generic;
 using System.Linq;
-using ChouUn.InventoryOrganizer.Core.Inventory;
-using ChouUn.InventoryOrganizer.Core.Tags;
+using ChouUn.StashMaster.Core.Inventory;
+using ChouUn.StashMaster.Core.Tags;
 
-namespace ChouUn.InventoryOrganizer.Core.Organizing;
+namespace ChouUn.StashMaster.Core.Organizing;
 
 /// <summary>一个目的地：带规则的容器加它的一条规则。</summary>
 public sealed record Destination(ItemSnapshot Container, TagRule Rule);

@@ -1,8 +1,8 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <AssemblyName>ChouUn.InventoryOrganizer</AssemblyName>
-    <RootNamespace>ChouUn.InventoryOrganizer</RootNamespace>
+    <AssemblyName>ChouUn.StashMaster</AssemblyName>
+    <RootNamespace>ChouUn.StashMaster</RootNamespace>
     <RuntimeIdentifier>win-x64</RuntimeIdentifier>
     <PlatformTarget>x64</PlatformTarget>
     <SelfContained>false</SelfContained>

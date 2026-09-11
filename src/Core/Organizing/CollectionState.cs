@@ -1,9 +1,9 @@
 using System.Collections.Generic;
 using System.Linq;
-using ChouUn.InventoryOrganizer.Core.Inventory;
-using ChouUn.InventoryOrganizer.Core.Packing;
+using ChouUn.StashMaster.Core.Inventory;
+using ChouUn.StashMaster.Core.Packing;
 
-namespace ChouUn.InventoryOrganizer.Core.Organizing;
+namespace ChouUn.StashMaster.Core.Organizing;
 
 /// <summary>收纳阶段的物品与网格索引，成功事务增量更新，失败后由调用方校准。</summary>
 internal sealed class CollectionState

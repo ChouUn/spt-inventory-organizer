@@ -1,6 +1,6 @@
 using System.Collections.Generic;
 
-namespace ChouUn.InventoryOrganizer.Core.Inventory;
+namespace ChouUn.StashMaster.Core.Inventory;
 
 /// <summary>游戏内置锁，与游戏的 Free / Pinned / Locked 三态一一对应。</summary>
 public enum LockState

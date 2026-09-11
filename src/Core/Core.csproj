@@ -1,8 +1,8 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <AssemblyName>ChouUn.InventoryOrganizer.Core</AssemblyName>
-    <RootNamespace>ChouUn.InventoryOrganizer.Core</RootNamespace>
+    <AssemblyName>ChouUn.StashMaster.Core</AssemblyName>
+    <RootNamespace>ChouUn.StashMaster.Core</RootNamespace>
   </PropertyGroup>
 
   <ItemGroup>

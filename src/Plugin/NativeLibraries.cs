@@ -3,7 +3,7 @@ using System.ComponentModel;
 using System.IO;
 using System.Runtime.InteropServices;
 
-namespace ChouUn.InventoryOrganizer;
+namespace ChouUn.StashMaster;
 
 /// <summary>启动时加载原生入口和依赖，使延迟求解不依赖进程的全局搜索目录。</summary>
 internal static class NativeLibraries

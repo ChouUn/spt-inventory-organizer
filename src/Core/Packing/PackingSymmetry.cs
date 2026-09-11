@@ -2,7 +2,7 @@ using System.Collections.Generic;
 using System.Linq;
 using Google.OrTools.Sat;
 
-namespace ChouUn.InventoryOrganizer.Core.Packing;
+namespace ChouUn.StashMaster.Core.Packing;
 
 /// <summary>等价位置槽按网格、行列排序，缺席槽在末尾，消除身份互换的重复解。</summary>
 internal static class PackingSymmetry

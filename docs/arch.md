@@ -1,4 +1,4 @@
-# inventory-organizer 总体设计
+# Stash Master 总体设计
 
 > Parent: [index.md](index.md)
 > Related: [requirements.md](requirements.md)
@@ -48,8 +48,8 @@ tag 语法与各阶段算法的精确契约放 `feats/`，实施顺序放 `plans
 
 | 目录 | 程序集 | 内容 |
 | --- | --- | --- |
-| `src/Core/` | `ChouUn.InventoryOrganizer.Core.dll` | 纯算法与编排 |
-| `src/Plugin/` | `ChouUn.InventoryOrganizer.dll` | BepInEx 插件：适配、界面、启动 |
+| `src/Core/` | `ChouUn.StashMaster.Core.dll` | 纯算法与编排 |
+| `src/Plugin/` | `ChouUn.StashMaster.dll` | BepInEx 插件：适配、界面、启动 |
 | `tests/Core.Tests/` | 测试 | Core 的单元测试 |
 | `tests/Plugin.Tests/` | 测试 | 使用实际 Harmony 验证兼容逻辑，隔离 Unity 与游戏 |
 
@@ -70,13 +70,13 @@ tag 语法与各阶段算法的精确契约放 `feats/`，实施顺序放 `plans
 
 ```mermaid
 flowchart TB
-    subgraph Plugin[ChouUn.InventoryOrganizer 插件]
+    subgraph Plugin[ChouUn.StashMaster 插件]
         Bootstrap --> Patches
         Bootstrap --> GameAdapter
         Patches --> Orchestrator
         GameAdapter -. 实现 .-> Ports
     end
-    subgraph Core[ChouUn.InventoryOrganizer.Core]
+    subgraph Core[ChouUn.StashMaster.Core]
         Orchestrator --> Ports
         Orchestrator --> Collector
         Orchestrator --> StackMerger

@@ -1,7 +1,7 @@
-using ChouUn.InventoryOrganizer.Core.Organizing;
+using ChouUn.StashMaster.Core.Organizing;
 using Xunit;
 
-namespace ChouUn.InventoryOrganizer.Core.Tests.Organizing;
+namespace ChouUn.StashMaster.Core.Tests.Organizing;
 
 public sealed class PackBudgetTests
 {

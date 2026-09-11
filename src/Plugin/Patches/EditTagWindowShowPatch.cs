@@ -4,7 +4,7 @@ using EFT.UI;
 using HarmonyLib;
 using SPT.Reflection.Patching;
 
-namespace ChouUn.InventoryOrganizer.Patches;
+namespace ChouUn.StashMaster.Patches;
 
 /// <summary>
 /// 放宽 tag 输入框的长度上限。Show 之前设，避免已保存的长 tag 被截断；

@@ -1,9 +1,9 @@
 using System.Collections.Generic;
 using System.Threading.Tasks;
-using ChouUn.InventoryOrganizer.Core.Inventory;
-using ChouUn.InventoryOrganizer.Core.Packing;
+using ChouUn.StashMaster.Core.Inventory;
+using ChouUn.StashMaster.Core.Packing;
 
-namespace ChouUn.InventoryOrganizer.Core.Organizing;
+namespace ChouUn.StashMaster.Core.Organizing;
 
 /// <summary>
 /// 编排层对游戏的出口。每个操作由实现方先模拟再提交，失败时返回原因。

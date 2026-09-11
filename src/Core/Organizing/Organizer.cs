@@ -2,11 +2,11 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 using System.Threading.Tasks;
-using ChouUn.InventoryOrganizer.Core.Inventory;
-using ChouUn.InventoryOrganizer.Core.Packing;
-using ChouUn.InventoryOrganizer.Core.Tags;
+using ChouUn.StashMaster.Core.Inventory;
+using ChouUn.StashMaster.Core.Packing;
+using ChouUn.StashMaster.Core.Tags;
 
-namespace ChouUn.InventoryOrganizer.Core.Organizing;
+namespace ChouUn.StashMaster.Core.Organizing;
 
 /// <summary>按固定顺序驱动折叠、合并、收纳、排布，每个阶段前读取最新快照。</summary>
 public sealed class Organizer

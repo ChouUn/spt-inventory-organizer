@@ -1,7 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <AssemblyName>ChouUn.InventoryOrganizer.Plugin.Tests</AssemblyName>
+    <AssemblyName>ChouUn.StashMaster.Plugin.Tests</AssemblyName>
     <IsPackable>false</IsPackable>
     <BepInExCoreDir>$(SPT_DIR)\BepInEx\core\</BepInExCoreDir>
   </PropertyGroup>

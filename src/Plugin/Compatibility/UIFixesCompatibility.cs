@@ -3,7 +3,7 @@ using System.Linq;
 using System.Reflection;
 using HarmonyLib;
 
-namespace ChouUn.InventoryOrganizer.Compatibility;
+namespace ChouUn.StashMaster.Compatibility;
 
 /// <summary>只移除 UIFixes 的排序接管补丁，保留同一入口上的其他补丁。</summary>
 internal static class UIFixesCompatibility
@@ -34,7 +34,7 @@ internal static class UIFixesCompatibility
         }
 
         // 本机 Harmony 会执行所有前置补丁；return false 或优先级不能阻止另一条流程。
-        var harmony = new Harmony("com.chouun.inventoryorganizer.compatibility");
+        var harmony = new Harmony("com.chouun.stashmaster.compatibility");
         harmony.Unpatch(target, prefix);
         if (Harmony.GetPatchInfo(target)?.Prefixes.Any(p => p.PatchMethod == prefix)
             == true)

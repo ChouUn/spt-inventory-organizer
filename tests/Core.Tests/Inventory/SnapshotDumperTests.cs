@@ -1,9 +1,9 @@
 using System;
 using System.Linq;
-using ChouUn.InventoryOrganizer.Core.Inventory;
+using ChouUn.StashMaster.Core.Inventory;
 using Xunit;
 
-namespace ChouUn.InventoryOrganizer.Core.Tests.Inventory;
+namespace ChouUn.StashMaster.Core.Tests.Inventory;
 
 public sealed class SnapshotDumperTests
 {

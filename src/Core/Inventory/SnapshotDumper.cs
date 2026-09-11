@@ -1,6 +1,6 @@
 using System.Collections.Generic;
 
-namespace ChouUn.InventoryOrganizer.Core.Inventory;
+namespace ChouUn.StashMaster.Core.Inventory;
 
 /// <summary>把快照展开成逐行文本，用于日志核对。</summary>
 public static class SnapshotDumper

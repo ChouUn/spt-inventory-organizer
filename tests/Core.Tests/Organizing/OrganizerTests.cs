@@ -1,12 +1,12 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
-using ChouUn.InventoryOrganizer.Core.Inventory;
-using ChouUn.InventoryOrganizer.Core.Organizing;
-using ChouUn.InventoryOrganizer.Core.Packing;
+using ChouUn.StashMaster.Core.Inventory;
+using ChouUn.StashMaster.Core.Organizing;
+using ChouUn.StashMaster.Core.Packing;
 using Xunit;
 
-namespace ChouUn.InventoryOrganizer.Core.Tests.Organizing;
+namespace ChouUn.StashMaster.Core.Tests.Organizing;
 
 public sealed class OrganizerTests
 {

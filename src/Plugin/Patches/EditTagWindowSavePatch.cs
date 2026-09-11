@@ -4,7 +4,7 @@ using EFT.UI;
 using HarmonyLib;
 using SPT.Reflection.Patching;
 
-namespace ChouUn.InventoryOrganizer.Patches;
+namespace ChouUn.StashMaster.Patches;
 
 /// <summary>保存 tag 时解析规则，用通知复述结果或指出错误。</summary>
 internal sealed class EditTagWindowSavePatch : ModulePatch

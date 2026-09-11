@@ -5,7 +5,7 @@ using EFT.InventoryLogic.Operations;
 using HarmonyLib;
 using SPT.Reflection.Patching;
 
-namespace ChouUn.InventoryOrganizer.Patches;
+namespace ChouUn.StashMaster.Patches;
 
 /// <summary>分别测量布局落位和事件刷新，避免把整个事务等待误当成界面耗时。</summary>
 internal sealed class LayoutDiagnosticsPatch : ModulePatch

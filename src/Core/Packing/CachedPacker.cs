@@ -2,7 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 
-namespace ChouUn.InventoryOrganizer.Core.Packing;
+namespace ChouUn.StashMaster.Core.Packing;
 
 /// <summary>复用相同输入的限时结果；输入变化或获得更长预算时重新求解。</summary>
 public sealed class CachedPacker : IPacker

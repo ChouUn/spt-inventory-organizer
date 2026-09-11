@@ -1,9 +1,9 @@
 using System.Collections.Generic;
 using System.Linq;
-using ChouUn.InventoryOrganizer.Core.Inventory;
-using ChouUn.InventoryOrganizer.Core.Packing;
+using ChouUn.StashMaster.Core.Inventory;
+using ChouUn.StashMaster.Core.Packing;
 
-namespace ChouUn.InventoryOrganizer.Core.Organizing;
+namespace ChouUn.StashMaster.Core.Organizing;
 
 /// <summary>
 /// 一个待排布的网格：所属容器、网格序号、装箱请求，以及参与排布的物品。

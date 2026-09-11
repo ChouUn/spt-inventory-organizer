@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 
-namespace ChouUn.InventoryOrganizer.Core.Packing;
+namespace ChouUn.StashMaster.Core.Packing;
 
 /// <summary>最终排布一次联合所有网格；物品归属不变，整个模型共用剩余预算。</summary>
 internal sealed class GlobalPacker

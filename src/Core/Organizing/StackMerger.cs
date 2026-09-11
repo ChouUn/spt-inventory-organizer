@@ -3,9 +3,9 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 using System.Threading.Tasks;
-using ChouUn.InventoryOrganizer.Core.Inventory;
+using ChouUn.StashMaster.Core.Inventory;
 
-namespace ChouUn.InventoryOrganizer.Core.Organizing;
+namespace ChouUn.StashMaster.Core.Organizing;
 
 /// <summary>统一堆叠与收纳补充共用索引，游戏决定兼容性和实际转移量。</summary>
 internal sealed class StackMerger

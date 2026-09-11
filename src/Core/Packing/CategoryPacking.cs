@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Numerics;
 
-namespace ChouUn.InventoryOrganizer.Core.Packing;
+namespace ChouUn.StashMaster.Core.Packing;
 
 /// <summary>逐层统计覆盖行跨度，父层优先；固定障碍与未知类别不计入。</summary>
 public static class CategoryPacking

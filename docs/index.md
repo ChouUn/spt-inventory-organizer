@@ -1,4 +1,4 @@
-# inventory-organizer 文档目录
+# Stash Master 文档目录
 
 SPT 一键整理仓库 mod 的项目文档。
 

@@ -1,10 +1,10 @@
 using System;
 using System.Linq;
-using ChouUn.InventoryOrganizer.Core.Inventory;
-using ChouUn.InventoryOrganizer.Core.Organizing;
+using ChouUn.StashMaster.Core.Inventory;
+using ChouUn.StashMaster.Core.Organizing;
 using Xunit;
 
-namespace ChouUn.InventoryOrganizer.Core.Tests.Organizing;
+namespace ChouUn.StashMaster.Core.Tests.Organizing;
 
 public sealed class FoldPlannerTests
 {

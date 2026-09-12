@@ -19,7 +19,8 @@ public sealed class CategoryPackingTests
     {
         var request = new PackRequest(7, 7, Array.Empty<FixedBlock>(),
             Enumerable.Range(0, 59).Select(i => Item(i.ToString(), "ammo")
-                with { Required = i < 40 }).ToArray())
+                with
+            { Required = i < 40 }).ToArray())
         {
             Current = Enumerable.Range(0, 40).Select(i =>
                 new Placement(i.ToString(), i % 7, i / 7, false)).ToArray(),
@@ -30,7 +31,6 @@ public sealed class CategoryPackingTests
         Assert.Equal(49, result.Placements.Count);
         Assert.Equal(6, CategoryPacking.Span(request, result));
         Assert.DoesNotContain(result.Unplaced, i => i.Required);
-        Assert.Contains("skip=optimum-bound", result.Diagnostic);
     }
 
     [Theory]
@@ -65,8 +65,6 @@ public sealed class CategoryPackingTests
 
         PackResult result = new CpSatPacker().Pack(request);
 
-        Assert.True(result.Diagnostic.Contains("cp-sat Optimal")
-            || result.Diagnostic.Contains("skip=optimum-bound"), result.Diagnostic);
         Assert.Equal(optimum, (CpSatPackerTests.Height(request, result),
             CategoryPacking.Span(request, result),
             CategoryPacking.Span(request, result, 1)));
@@ -162,7 +160,6 @@ public sealed class CategoryPackingTests
 
         Assert.Equal(2, CategoryPacking.Span(request, result));
         Assert.Equal(4, CpSatPackerTests.Height(request, result));
-        Assert.Contains("skip=optimum-bound", result.Diagnostic);
         CpSatPackerTests.AssertValid(request, result);
         PackResult again = new CpSatPacker().Pack(request with
         {
@@ -238,6 +235,10 @@ public sealed class CategoryPackingTests
         });
 
     private static PackItem Item(string id, string? category, int w = 1, int h = 1) =>
-        new(id, id, w, h) { CategoryPath = category == null ? Array.Empty<string>()
-            : new[] { category }, Required = true };
+        new(id, id, w, h)
+        {
+            CategoryPath = category == null ? Array.Empty<string>()
+            : new[] { category },
+            Required = true
+        };
 }

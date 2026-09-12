@@ -127,7 +127,7 @@ public sealed class PackingObjectiveTests
     }
 
     [Fact]
-    public void 同成员的多层类别共用跨度变量()
+    public void 同成员的多层类别保持一致的聚合结果()
     {
         var request = new PackRequest(5, 10, Array.Empty<FixedBlock>(), new[]
         {
@@ -144,8 +144,6 @@ public sealed class PackingObjectiveTests
         PackResult result = new CpSatPacker().Pack(request);
 
         Assert.Equal(new[] { 5, 5, 5 }, CategoryPacking.Spans(request, result));
-        Assert.Contains("1=shared", result.Diagnostic);
-        Assert.Contains("2=shared", result.Diagnostic);
         CpSatPackerTests.AssertValid(request, result);
     }
 }

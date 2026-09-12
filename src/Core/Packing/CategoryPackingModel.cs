@@ -14,6 +14,46 @@ internal static class CategoryPackingModel
         ContainerPackResult baseline, double seconds, out string status)
     {
         var elapsed = Stopwatch.StartNew();
+        // 固定占位后的网格互不耦合；先处理小网格，避免大仓库建模耗尽提示预算。
+        // 所有提示共用半份剩余预算，另一半仍交给不限制位置的联合几何搜索。
+        var diagnostics = new List<string>();
+        PackResult[] prepared = baseline.Grids.ToArray();
+        int[] eligible = Enumerable.Range(0, requests.Count).Where(i =>
+            prepared[i].Complete && requests[i].Items.All(item => item.Required)
+            && CategoryOrder.Penalty(requests[i], prepared[i]) == 0)
+            .OrderBy(i => requests[i].Items.Count).ToArray();
+        for (int index = 0; index < eligible.Length; index++)
+        {
+            double budget = (seconds / 2 - elapsed.Elapsed.TotalSeconds)
+                / (eligible.Length - index);
+            if (budget <= 0) { break; }
+            int grid = eligible[index];
+            var request = new[] { requests[grid] };
+            var before = new ContainerPackResult(new[] { prepared[grid] });
+            ContainerPackResult reassigned = CategorySlotModel.Solve(request, before,
+                budget, out string reassignmentStatus);
+            diagnostics.Add($"slots[{grid}]={reassignmentStatus}");
+            if (CategoryPacking.Compare(request, reassigned, before) < 0)
+                prepared[grid] = reassigned.Grids[0];
+        }
+        baseline = new ContainerPackResult(prepared);
+        string prefix = diagnostics.Count == 0 ? "" : string.Join("; ", diagnostics) + "; ";
+        double remaining = seconds - elapsed.Elapsed.TotalSeconds;
+        if (remaining <= 0)
+        {
+            status = prefix + "budget-exhausted";
+            return baseline;
+        }
+        ContainerPackResult? result = SolveModel(requests, baseline, remaining,
+            out string globalStatus);
+        status = prefix + globalStatus;
+        return result ?? baseline;
+    }
+
+    private static ContainerPackResult? SolveModel(IReadOnlyList<PackRequest> requests,
+        ContainerPackResult baseline, double seconds, out string status)
+    {
+        var elapsed = Stopwatch.StartNew();
         var model = new CpModel();
         var grids = new List<List<CpSatModel.Rectangle>>();
         var objectives = new List<IReadOnlyList<PackingObjective>>();

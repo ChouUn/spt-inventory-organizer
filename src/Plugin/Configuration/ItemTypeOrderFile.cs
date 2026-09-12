@@ -24,7 +24,7 @@ internal sealed class ItemTypeOrderFile
 
     internal ItemTypeOrderFile(string path) => _path = path;
 
-    internal IReadOnlyList<string> Read(Action<string> warn)
+    internal IReadOnlyList<string> Read(Action<string> warn, string? language = null)
     {
         try
         {
@@ -33,7 +33,12 @@ internal sealed class ItemTypeOrderFile
                 Directory.CreateDirectory(Path.GetDirectoryName(_path)!);
                 using var stream = new FileStream(_path, FileMode.CreateNew);
                 using var writer = new StreamWriter(stream, new UTF8Encoding(false));
-                writer.Write(JsonConvert.SerializeObject(new ItemTypeOrderDocument(),
+                var generated = new ItemTypeOrderDocument
+                {
+                    ItemTypeOrder = DefaultOrder.Select(type =>
+                        ItemTypeNames.Localize(type, language)).ToList(),
+                };
+                writer.Write(JsonConvert.SerializeObject(generated,
                     Formatting.Indented));
                 return _lastValid = DefaultOrder.ToArray();
             }
@@ -43,14 +48,16 @@ internal sealed class ItemTypeOrderFile
                 ?? throw new JsonException("配置不能为空");
             if (!document.Enabled) { return _lastValid = Array.Empty<string>(); }
             var seen = new HashSet<string>(StringComparer.Ordinal);
-            foreach (string type in document.ItemTypeOrder)
+            var order = new List<string>();
+            foreach (string name in document.ItemTypeOrder)
             {
-                if (!DefaultOrder.Contains(type))
-                    throw new JsonException($"未知物品类型：{type}");
+                string type = ItemTypeNames.Resolve(name)
+                    ?? throw new JsonException($"未知物品类型：{name}");
                 if (!seen.Add(type))
-                    throw new JsonException($"重复物品类型：{type}");
+                    throw new JsonException($"重复物品类型：{name}");
+                order.Add(type);
             }
-            return _lastValid = document.ItemTypeOrder
+            return _lastValid = order
                 .Concat(DefaultOrder.Where(type => !seen.Contains(type))).ToArray();
         }
         catch (Exception ex) when (ex is IOException

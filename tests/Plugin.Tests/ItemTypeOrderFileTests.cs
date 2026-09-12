@@ -34,8 +34,81 @@ public sealed class ItemTypeOrderFileTests : IDisposable
         Assert.Equal(expected, document["itemTypeOrder"]!.Values<string>());
         Assert.Equal(27, document["itemTypeOrder"]!.Count());
         Assert.Null(document["categories"]);
-        Assert.Equal(expected, file.Read(_warnings.Add));
+        string original = File.ReadAllText(FilePath);
+        Assert.Equal(expected, file.Read(_warnings.Add, "ch"));
+        Assert.Equal(original, File.ReadAllText(FilePath));
         Assert.Empty(_warnings);
+    }
+
+    [Fact]
+    public void 中文配置生成后切换语言及重新加载仍识别且不改写()
+    {
+        var file = new ItemTypeOrderFile(FilePath);
+        Assert.Equal(ItemTypeOrderFile.DefaultOrder, file.Read(_warnings.Add, "ch"));
+        string original = File.ReadAllText(FilePath);
+        string[] names = JObject.Parse(original)["itemTypeOrder"]!
+            .Values<string>().ToArray()!;
+        Assert.Equal(new[] { "容器", "耳机", "头部装备" }, names.Take(3));
+        Assert.Equal(27, names.Distinct().Count());
+        Assert.All(names, name => Assert.DoesNotContain(name,
+            ItemTypeOrderFile.DefaultOrder));
+        Assert.Equal(ItemTypeOrderFile.DefaultOrder, file.Read(_warnings.Add, "ch"));
+        Assert.Equal(ItemTypeOrderFile.DefaultOrder,
+            new ItemTypeOrderFile(FilePath).Read(_warnings.Add, "en"));
+        Assert.Equal(original, File.ReadAllText(FilePath));
+        Assert.Empty(_warnings);
+    }
+
+    [Theory]
+    [InlineData("en")]
+    [InlineData("fr")]
+    [InlineData(null)]
+    public void 无对应译名时生成英文配置(string? language)
+    {
+        new ItemTypeOrderFile(FilePath).Read(_warnings.Add, language);
+        JToken names = JObject.Parse(File.ReadAllText(FilePath))["itemTypeOrder"]!;
+        Assert.Equal(ItemTypeOrderFile.DefaultOrder, names.Values<string>());
+        Assert.Empty(_warnings);
+    }
+
+    [Fact]
+    public void 中英文混写按同一类型补齐且热读取编辑()
+    {
+        var file = new ItemTypeOrderFile(FilePath);
+        Write(new ItemTypeOrderDocument
+        {
+            ItemTypeOrder = new List<string> { "护甲", "Rigs", "枪械" },
+        });
+        string original = File.ReadAllText(FilePath);
+        IReadOnlyList<string> result = file.Read(_warnings.Add, "ch");
+        Assert.Equal(new[] { "Armor", "Rigs", "Weapons", "Containers" },
+            result.Take(4));
+        Assert.Equal(27, result.Distinct().Count());
+        Assert.Equal(original, File.ReadAllText(FilePath));
+        Write(new ItemTypeOrderDocument
+        {
+            ItemTypeOrder = new List<string> { "枪械", "Armor" },
+        });
+        Assert.Equal("Weapons", file.Read(_warnings.Add, "ch")[0]);
+        Assert.Empty(_warnings);
+    }
+
+    [Theory]
+    [InlineData("护甲", "Armor")]
+    [InlineData("Armor", "护甲")]
+    [InlineData("护甲", "护甲")]
+    public void 中英文重复类型保留上次有效配置(string first, string second)
+    {
+        var file = new ItemTypeOrderFile(FilePath);
+        IReadOnlyList<string> before = file.Read(_warnings.Add, "ch");
+        Write(new ItemTypeOrderDocument
+        {
+            ItemTypeOrder = new List<string> { first, second },
+        });
+        string original = File.ReadAllText(FilePath);
+        Assert.Equal(before, file.Read(_warnings.Add, "ch"));
+        Assert.Single(_warnings);
+        Assert.Equal(original, File.ReadAllText(FilePath));
     }
 
     [Fact]

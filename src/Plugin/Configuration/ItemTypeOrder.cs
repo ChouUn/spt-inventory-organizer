@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using System.IO;
+using EFT;
 
 namespace ChouUn.StashMaster.Configuration;
 
@@ -10,5 +11,6 @@ internal static class ItemTypeOrder
         BepInEx.Paths.ConfigPath, "com.chouun.stashmaster.category-order.json"));
 
     internal static IReadOnlyList<string> Read() =>
-        File.Read(message => Plugin.Log.LogWarning(message));
+        File.Read(message => Plugin.Log.LogWarning(message),
+            LocalizationManager.Instance.Culture);
 }

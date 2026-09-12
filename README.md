@@ -79,49 +79,51 @@ MVP 九个步骤均已完成并通过对应验收：tag 编辑、折叠、合并
 默认启用，沿用 SMH 的物品类型。首次整理后，打开
 `BepInEx/config/com.chouun.stashmaster.category-order.json`，
 按想要的先后调整 `itemTypeOrder`。
+中文游戏生成中文类型名，其他语言回退英文；已有英文配置也能继续使用。
 例如让护甲、胸挂、武器依次靠前：
 
 ```json
 {
   "enabled": true,
-  "itemTypeOrder": ["Armor", "Rigs", "Weapons"]
+  "itemTypeOrder": ["护甲", "胸挂", "枪械"]
 }
 ```
 
 没写的类型排在后面。保存后，下次整理生效，无需重启游戏。
+中英文可混写，切换游戏语言后配置仍有效。
 
 <details>
 <summary>推荐顺序与物品类型（默认配置）</summary>
 
-| 类型名 | 物品 |
+| 英文类型名 | 中文类型名 |
 | --- | --- |
-| `Containers` | 收纳容器 |
+| `Containers` | 容器 |
 | `Headsets` | 耳机 |
-| `Headgear` | 头盔、帽子 |
-| `NightAndThermalVision` | 夜视、热成像设备 |
-| `HeadgearArmor` | 头部附加防护 |
+| `Headgear` | 头部装备 |
+| `NightAndThermalVision` | 夜视与热成像 |
+| `HeadgearArmor` | 头盔装甲 |
 | `Eyewear` | 眼镜 |
 | `Armor` | 护甲 |
 | `Rigs` | 胸挂 |
-| `BallisticPlates` | 防弹插板 |
+| `BallisticPlates` | 插板 |
 | `Backpacks` | 背包 |
 | `Weapons` | 枪械 |
 | `Magazines` | 弹匣 |
-| `Ammo` | 弹药、弹药盒 |
+| `Ammo` | 弹药 |
 | `Grenades` | 投掷物 |
-| `Meds` | 医疗用品 |
+| `Meds` | 医疗 |
 | `Food` | 食物 |
 | `Drink` | 饮料 |
 | `Facecovers` | 面罩 |
 | `Armband` | 臂章 |
-| `Melee` | 近战武器 |
-| `Mods` | 武器配件 |
-| `RepairKits` | 维修工具包 |
+| `Melee` | 近战 |
+| `Mods` | 配件 |
+| `RepairKits` | 维修包 |
 | `SpecialEquipment` | 特殊装备 |
-| `Barter` | 交易物品 |
-| `Keys` | 钥匙、门禁卡 |
+| `Barter` | 杂物 |
+| `Keys` | 钥匙 |
 | `Money` | 货币 |
-| `Info` | 情报物品 |
+| `Info` | 情报 |
 
 </details>
 

@@ -7,6 +7,8 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <Compile Include="../../src/Plugin/Configuration/ItemTypeNames.cs"
+             Link="ItemTypeNames.cs" />
     <Compile Include="../../src/Plugin/Configuration/ItemTypeOrderFile.cs"
              Link="ItemTypeOrderFile.cs" />
     <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />

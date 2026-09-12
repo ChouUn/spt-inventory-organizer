@@ -1,9 +1,10 @@
 # Stash Master 文档目录
 
-> Parent: [../README.md](../README.md)
+> Parent: [English](../README.md) / [简体中文](../README.zh-CN.md)
 
 SPT 一键整理仓库 mod 的项目文档。
 
+- [development.md](development.md)：开发进度、实现说明、诊断与验证记录
 - [requirements.md](requirements.md)：用户原始需求与待澄清问题
 - [arch.md](arch.md)：总体设计，模块边界、依赖方向与核心数据流
 - [feats/tag-grammar.md](feats/tag-grammar.md)：tag 规则语法契约

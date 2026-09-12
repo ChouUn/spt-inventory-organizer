@@ -1,0 +1,107 @@
+# Stash Master 开发说明
+
+> Parent: [index.md](index.md)
+> 用户说明：[English](../README.md) / [简体中文](../README.zh-CN.md)
+
+本文承接从 README 迁出的开发进度、实现说明、诊断与验证记录。
+完整行为契约由 `feats/` 维护，各项实现与验收进度由 `plans/` 记录。
+
+## 项目标识与部署
+
+- 项目名称：Stash Master。
+- 仓库：<https://github.com/ChouUn/spt-stash-master>。
+- 解决方案：[StashMaster.sln](../StashMaster.sln)。
+- 根命名空间：`ChouUn.StashMaster`，Core 和测试工程使用对应子命名空间。
+- 程序集：`ChouUn.StashMaster.dll`、`ChouUn.StashMaster.Core.dll`。
+- BepInEx 插件标识：`com.chouun.stashmaster`。
+
+[部署脚本](../scripts/deploy.ps1)将构建产物复制到
+`BepInEx/plugins/ChouUn.StashMaster/`。游戏运行时拒绝部署。
+
+## 开发进度与验收记录
+
+- MVP 九个步骤均已完成并通过对应验收：tag 编辑、折叠、合并堆叠、按规则收纳、
+  启发式与 CP-SAT 排布，以及 UIFixes 6.0.2 排序入口兼容。
+  记录见 [MVP 实施计划](plans/mvp.md)。
+- 第 8 步验收确认：收纳后合并正常；容器已满但堆叠未满时也能补充数量。
+  第 9 步排布与空间选择已通过游戏内验收，均记录于 MVP 计划。
+- 后续多网格联合选择、跨容器统一堆叠、2+1 求解预算与减少重复读取已实现，
+  自动化验证和待验收项见 [收纳优化计划](plans/collection-optimization.md)。
+- 父类优先的层级聚合效果已获用户确认，见 [类别聚合计划](plans/category-grouping.md)。
+  后续全部容器联合规划、按网格计分和停滞退出的实现与验证，
+  见 [全局排布计划](plans/global-packing.md)。
+- Debug 原生对比修复后的游戏日志已核验，五个网格均输出对照且未应用原生结果，
+  见 [排序对照报告](reports/sort-comparison.md)。
+
+这些记录对应各自版本与验收范围；后续改动的自动化验证不替代其游戏内验收。
+
+## 实现与规则入口
+
+阶段顺序为折叠、统一堆叠、按规则收纳、最终排布，
+模块边界和游戏事务流程见 [总体设计](arch.md)。
+
+- [tag 语法](feats/tag-grammar.md)：规则解析、匹配与优先级。
+- [堆叠契约](feats/stacking.md)：容器内优先补充 Pinned 堆叠，
+  其余把小堆并入较大的堆叠；统一规划跨容器来源，按实际事务结果更新数量。
+  合并能力与上限由游戏校验，通知中的“合并 N 次”按成功事务计数。
+- [排布契约](feats/packing.md)：收纳只最大化装入面积，
+  最终排布在每个网格内计算高度、父子类别跨度与权重，再累加完整分数。
+  CP-SAT 只在对应阶段目标改善时替换合法基线。
+
+搜索共享整次 3 秒预算：收纳最多使用 2 秒，单个目标容器的联合选择最多分配 1 秒；
+最终排布一次规划全部待整理网格，使用剩余额度，不按容器逐个分配一秒。
+最终排布连续 0.5 秒没有找到更低完整总分时提前停止；详细计时边界见排布契约。
+未变化的输入与已应用布局可命中缓存，复用结果不代表已证明最优。
+后台搜索以已有可行布局保底；游戏事务、调度与首次原生库初始化另有开销，
+3 秒不是整次整理的耗时上限。
+
+## 排序入口兼容
+
+### UI Fixes
+
+UIFixes 6.0.2 的入口兼容于 2026-09-10 通过游戏内验收。
+插件通过软依赖等待 UIFixes 注册补丁，精确移除
+`GridSortPanel.Sort` 上的 `UIFixes.SortPatches+StackFirstPatch.Prefix`。
+代码见 [UIFixesCompatibility.cs](../src/Plugin/Compatibility/UIFixesCompatibility.cs)。
+
+正式整理不调用 UIFixes 的 Sort 或原生排序计算，堆叠由本项目通过游戏 API 执行。
+UIFixes 的其他补丁、配置文件与 FiR 混堆规则保留。
+移除本项目并重启游戏后，UIFixes 按自己的配置重新注册入口。
+已安装版本的目标方法或补丁注册不符时，插件记录兼容失败并停止接管排序。
+
+### Stash Management Helper
+
+尚未实现兼容适配，也未完成游戏内验收。
+普通按钮在 `GridSortPanel.Sort` 被接管，不进入 SMH 的
+`ItemManipulator.Sort` 折叠、堆叠与排序流程。
+SMH 右键菜单的 `SwapFlags` 会备份并临时改写排序选项，然后调用面板排序；
+恢复位于 SMH 的排序后置补丁，接管后可能不会运行。
+因此当前不能声明完整兼容，用户可见影响保留在两种语言的 README 中。
+
+## Debug 原生排序对比
+
+Debug 构建在最终规划后，使用相同物品、网格与固定障碍，
+在独立占用缓冲上测量原生列表排序与落位。结果不应用，不提交游戏事务。
+诊断代码位于 [Plugin/Diagnostics](../src/Plugin/Diagnostics/)，
+行为边界见 [排布契约](feats/packing.md)。
+
+- 日志以 `sort-benchmark` 开头，记录是否全部放入、行数与类别跨度。
+- 基准额外耗时单独记录，从正式整理耗时中扣除，不占求解预算。
+- 测量不包含原生控制器校验、事务回滚与 UI 刷新。
+- 复制完整原生空位搜索调用链，避免调用 UIFixes 已修改的方法；
+  正常游戏调用仍保留第三方补丁与配置。
+- Release 编译时排除基准入口和实现，不执行原生排序对比。
+
+## 性能与复现资料
+
+- [原生与 SMH 对照](reports/sort-comparison.md)：
+  同一散乱快照上的离线计算、布局质量和后续游戏日志，包含版本、配置与测量范围。
+- [武器箱排序边界](reports/weapon-sort-boundaries.md)：
+  原生与 SMH 各自成功或失败的构造，完整原生排序方法、回滚与几何守恒验证。
+  README 的游戏截图和报告中的 MDR＋莫辛组合是不同样本。
+- [整理性能报告](reports/organize-performance.md)与
+  [预算分布报告](reports/grid-budget-profile.md)：规划、事务和搜索进展的测量。
+- MVP 历史测量中，后续少量调整耗时数十毫秒，首次重排 360 件约 1.74 秒，
+  用户未感到明显卡顿。记录见 [MVP 实施计划](plans/mvp.md)，
+  该结果不代表后续聚合版本或其他库存的耗时承诺。
+- [外部参考](../refs-local/README.md)：相关 mod、代码与资料来源。

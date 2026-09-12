@@ -1,134 +1,215 @@
-# Stash Master
+# Stash Master — An Opinionated Stash Manager
 
-面向 SPT 4.1.x 的客户端 mod，使用游戏原有的排序按钮一键整理仓库。
-通过容器 tag 指定收纳规则，结合自动折叠、合并堆叠和容器内排布，减少手工整理。
+**English** | [简体中文](README.zh-CN.md)
 
-## 开发状态
+- **One-click organizing**: fold, merge stacks, put items away, and sort.
+- **Fill your containers**: fit more by rearranging their contents and putting
+  awkward gaps to use.
+- **Compact layouts**: keep similar items together, instead of splitting them
+  between the top and bottom of your stash.
 
-MVP 九个步骤均已完成并通过对应验收：tag 编辑、折叠、合并堆叠、按规则收纳、
-启发式与 CP-SAT 排布，以及 UIFixes 6.0.2 排序入口兼容。
-详细进度见 [实施计划](docs/plans/mvp.md)。
+## The frustration
 
-后续收纳优化已实现并通过自动化验证，待游戏内验收：多网格联合选择、
-跨容器统一堆叠、2+1 求解预算和减少重复读取。
-进度见 [收纳优化计划](docs/plans/collection-optimization.md)。
+Tired of sorting failing for no apparent reason?
 
-## UIFixes 兼容
+Five weapons already fit in the case, with two empty rows at the bottom.
+Click sort, and you get an error:
 
-**UIFixes 6.0.2 的排序入口兼容已通过游戏内验收（2026-09-10）。**
-其他版本尚未验证。
+![Two rows remain empty in the weapons case, yet sorting fails][sort-failure]
 
-- 同时安装时，本 mod 在运行时停用 UIFixes 的“排序前合并堆叠”入口，
-  由本 mod 统一执行整理，避免一次点击启动两套流程。
-- 本 mod 不调用 UIFixes 的 Sort，也不通过它额外触发原生排序。
-- UIFixes 的其他功能保留，配置文件保持原样。
-  该设置仍可显示为开启，但本 mod 接管期间不会启动 UIFixes 的这条流程。
-- 合并堆叠由本 mod 提供，不依赖 UIFixes 是否安装，
-  也不受其“排序前合并堆叠”开关影响。
-  同类判定沿用游戏当前规则；UIFixes 的 FiR 混堆设置仍由其独立补丁生效。
-- 移除本 mod 后重新启动游戏，UIFixes 会按自己的配置恢复注册排序入口。
+Everything fits, but the sorter cannot put it back together. Weapons placed early
+can block the space a longer weapon needs later. Stash Master plans positions and
+orientations together, moving earlier items out of the way when it needs to.
 
-版本或补丁注册状态不符时，插件会记录兼容失败并停止接管排序。
-实测后续无需排布或仅少量调整时，整理耗时为数十毫秒。
-首次重排 360 件总耗时约 1.74 秒，用户未感到明显卡顿，具体数据见实施计划。
+We also tested three separate weapons case combinations. Native sorting and
+Stash Management Helper each failed on some of them; Stash Master found a complete
+layout for all three. See the [illustrated cases, sizes, and results][comparison]
+(in Chinese).
 
-## 合并堆叠
+![Three weapons case inputs and results for Native, SMH, and Stash Master][case-inputs]
 
-整理顺序为折叠、统一堆叠（含跨容器）、按 tag 收纳、排布。
-合并范围为当前根容器和带有效规则的子容器；未打规则的容器内部不动。
+✓ Sorting completed; × sorting failed and the original layout was retained.
+Stash Management Helper used the settings listed below.
 
-- Pinned 堆叠保留位置和堆叠本身，只接收数量补充；Locked 物品及容器内部跳过。
-- 容器内优先补充 Pinned 堆叠，其余把小堆并入较大的堆叠。
-- 带有效规则容器内的堆叠也可作为跨容器来源。
-  同样空间收益下优先在原容器内合并；两箱各有半堆时，可以合成一堆释放格子。
-  不要求每箱保留数量，也不为增加合并次数执行没有空间收益的跨箱转移。
-  Pinned 接收方仍可补充数量。
-- 收纳时先补充目标已有堆叠，再尝试放入余量；没有空格也可以先补充数量。
-  放不下的余量继续按后续规则收纳。
-- 能否合并、数量上限和操作限制由游戏校验；结果通知中的“合并 N 次”按成功事务计数。
+## How it compares
 
-合并已通过自动化测试和第 8 步游戏内验收。
-用户确认可收纳场景下合并正常，容器已满但堆叠未满时也能补充数量。
-新增跨容器统一堆叠尚待本轮游戏内验收，具体行为见 [堆叠契约](docs/feats/stacking.md)。
+### Armor at the bottom, without the gaps
 
-## 排布与空间选择
+Native sorting puts armor at the bottom, leaving gaps scattered between pieces
+of gear and wasting space. With Stash Master, armor stays at the bottom,
+but the layout is much tighter:
 
-- 尽量向上压紧物品，减少占用行数，留出连续空位。
-- 空间利用率相同时，按父类优先逐层最小化类别占用行跨度之和。
-  例如武器先整体靠近，再聚合枪械子类；使用完整手册类别树，全局求解，
-  不划定固定分区。层级聚合效果已获游戏内确认，首次整理耗时仍待优化。
-  同次游戏内，未变化的单网格复用上次结果，避免重复耗满求解预算。
-- 按 tag 收纳时会尝试重排目标容器；同一规则的候选装不下时，优先选择放入面积更多的组合。
-  原有物品保留，Pinned／Locked 固定不动，未选中的候选继续后续规则。
-- 单网格排布或多网格联合选择单次最多分配 1 秒，整次共享 3 秒预算。
-  收纳最多用 2 秒，剩余额度用于最终排布；证明最优时提前结束。
-  求解在后台运行；超时采用已有可行结果或启发式保底。
-  游戏事务和首次原生库初始化另有开销，3 秒不是整次整理的耗时上限。
-- 收纳联合选择目标容器的全部网格，考虑尺寸与过滤，原有物品仍在各自网格内重排。
-  限时结果不承诺全局最优。
-  未启用自定义类型顺序时，CP-SAT 只有改善面积、高度或同等空间下的聚合指标时
-  才替换排序基线。
+| Native | Stash Master |
+| --- | --- |
+| ![Native: gaps between pieces of gear][armor-native] | ![Stash Master][armor-sm] |
 
-具体行为见 [排布契约](docs/feats/packing.md)。第 9 步已通过游戏内验收；
-新增联合选择与预算分配尚待本轮游戏内验收。
+### Stash Management Helper's default sorting
 
-## 类型顺序
+Stash Management Helper puts armor at the top by default and does a good job.
+Still, a keychain, magazines, and loose ammo find their way into the gaps
+between pieces of gear:
 
-启用后，先满足配置的类型先后，再优化空间利用率和类别聚合。
+With `Backpacks > Armor > Rigs`, Stash Master produces a similar equipment layout,
+without keys, magazines, or loose ammo mixed in between:
 
-默认启用，沿用 SMH 的物品类型。首次整理后，打开
-`BepInEx/config/com.chouun.stashmaster.category-order.json`，
-按想要的先后调整 `itemTypeOrder`。
-中文游戏生成中文类型名，其他语言回退英文；已有英文配置也能继续使用。
-例如让护甲、胸挂、武器依次靠前：
+| Stash Management Helper | Stash Master |
+| --- | --- |
+| ![SMH: small items in red boxes][armor-smh] | ![Stash Master][armor-sm-custom] |
+
+### Measurements from the same stash
+
+The same messy stash, after folding, merging, and collection, with the same items
+sorted three ways:
+
+| Layout result | Native | Stash Management Helper | Stash Master (ours) |
+| --- | ---: | ---: | ---: |
+| Stash rows used | 62 | **61** | **61** |
+| Sum of category row spans | 106 | 212 | **59** |
+
+Lower is better for both measures. A category's span is its bottommost occupied
+row minus its topmost occupied row, summed across parent categories.
+Pinned and Locked items stay put and are excluded from both measures, so the row
+count does not mean that everything below it is empty.
+
+Stash Management Helper used capacity-first, then area-first sorting, with type
+sorting disabled. Native sorting and Stash Management Helper computed their
+layouts faster in this comparison; ours spent more time on a compact arrangement.
+[Full measurements, timings, and settings][timings] (in Chinese).
+
+## Start organizing
+
+Tag a **Money case** with `@o`, then click **the stash sort button** and
+accept the game's confirmation. Loose money in your stash will go into the case.
+Clicking a container's own sort button organizes the items inside that container.
+Folding, stack merging, collection, and sorting run in order, with a notification
+when they finish.
+
+### Tag rules
+
+`@o` collects anything the container can hold. Add a condition to limit what goes in.
+
+| Container | Tag | What it collects |
+| --- | --- | --- |
+| Money case | `@o` | Loose money |
+| Dogtag case | `@o#1` | Collect dogtags **1st**, before the junk box grabs them |
+| Ammo case | `@o n:5.45;` | Only 5.45 ammo |
+| Ammo case | `@o n:5.45 \|\| n:5.56;` | 5.45 or 5.56 ammo |
+| Items case | `@o magazines && n:5.45;` | Only 5.45 magazines |
+| Lucky Scav Junk box | `@o !n:dogtag;` | Accepted items, excluding dogtags |
+
+```text
+@o[#priority] [condition;]
+```
+
+Bracketed parts are optional; omit the brackets in your tag.
+
+- **Names and categories**: `n:5.45` collects items with `5.45` in their name or
+  short name. Without `n:`, use a full category name from the game's handbook;
+  this includes everything in its subcategories. Use your current game language.
+  Names and categories are case-insensitive.
+- **Priority**: put a whole number directly after `@o#`.
+  This sets the collection order across all containers. `#1` runs before `#2`;
+  rules without a number run last. Ties have no guaranteed order.
+  Items that do not fit can still go to containers with later rules.
+- **Combining conditions**: `&&` means "and", `||` means "or", and `!` excludes
+  items matching the condition immediately after it. When you use both `&&` and
+  `||`, `&&` is checked first. Parentheses cannot change that order.
+- **Spaces and semicolons**: use lowercase `@o` and `n:`. Leave a space between
+  `@o` or `@o#1` and the condition, then end the condition with `;`.
+  For `@o` or `@o#1` on its own, the semicolon is optional.
+
+One tag can have several rules: `@o#1 n:5.45; @o#5` on an Ammo case collects
+5.45 ammo at priority 1, then other ammo at priority 5.
+A container name can go before `@o`; it does not affect the rules.
+When you save a tag, a message explains each rule. If any rule has an error,
+the message points it out, and the whole tag stays inactive until you fix it.
+
+### Type order
+
+Enabled by default, using the same item types as SMH. After your first sort, open
+`BepInEx/config/com.chouun.stashmaster.category-order.json`
+and arrange `itemTypeOrder` in your preferred order.
+New configurations use Chinese type names when the game is in Chinese,
+and English names for other languages.
+For example, put armor, rigs, and weapons first:
 
 ```json
 {
   "enabled": true,
-  "itemTypeOrder": ["护甲", "胸挂", "枪械"]
+  "itemTypeOrder": ["Armor", "Rigs", "Weapons"]
 }
 ```
 
-没写的类型排在后面。保存后，下次整理生效，无需重启游戏。
-中英文可混写，切换游戏语言后配置仍有效。
+Omitted types follow the listed ones. Save and sort again; **no restart is needed**.
+Chinese and English names can be mixed. Existing configurations need no changes,
+even when you switch the game language.
 
 <details>
-<summary>推荐顺序与物品类型（默认配置）</summary>
+<summary>Recommended order (default configuration)</summary>
 
-| 英文类型名 | 中文类型名 |
-| --- | --- |
-| `Containers` | 容器 |
-| `Headsets` | 耳机 |
-| `Headgear` | 头部装备 |
-| `NightAndThermalVision` | 夜视与热成像 |
-| `HeadgearArmor` | 头盔装甲 |
-| `Eyewear` | 眼镜 |
-| `Armor` | 护甲 |
-| `Rigs` | 胸挂 |
-| `BallisticPlates` | 插板 |
-| `Backpacks` | 背包 |
-| `Weapons` | 枪械 |
-| `Magazines` | 弹匣 |
-| `Ammo` | 弹药 |
-| `Grenades` | 投掷物 |
-| `Meds` | 医疗 |
-| `Food` | 食物 |
-| `Drink` | 饮料 |
-| `Facecovers` | 面罩 |
-| `Armband` | 臂章 |
-| `Melee` | 近战 |
-| `Mods` | 配件 |
-| `RepairKits` | 维修包 |
-| `SpecialEquipment` | 特殊装备 |
-| `Barter` | 杂物 |
-| `Keys` | 钥匙 |
-| `Money` | 货币 |
-| `Info` | 情报 |
+```json
+[
+  "Containers", "Headsets", "Headgear", "NightAndThermalVision", "HeadgearArmor",
+  "Eyewear", "Armor", "Rigs", "BallisticPlates", "Backpacks", "Weapons",
+  "Magazines", "Ammo", "Grenades", "Meds", "Food", "Drink", "Facecovers",
+  "Armband", "Melee", "Mods", "RepairKits", "SpecialEquipment", "Barter",
+  "Keys", "Money", "Info"
+]
+```
 
 </details>
 
-## 文档
+### Organization rules and limits
 
-- [文档目录](docs/index.md)：需求、架构、语法规格与调研。
-- [tag 语法](docs/feats/tag-grammar.md)：容器规则的写法与示例。
-- [参考资料](refs-local/README.md)：相关 mod 与资料来源。
+- **Containers can be nested.** A case inside another case can still collect
+  items using its tag. Stacks are merged and items rearranged in the container
+  you are sorting and any containers inside it with rules.
+  In containers without rules, items are only folded, not merged or moved.
+- **Use the game's Pin and Lock.** Pinned and Locked items stay in place.
+  Pinned stacks can still be topped up. Locked items are not merged,
+  and nothing inside a Locked container is organized.
+- **Top up stacks before finding empty slots.** Half stacks in different cases
+  can be combined in one place. Even a case with no empty slots can take more
+  items if an existing stack is not full.
+- **A container keeps its existing items.** They can be rearranged to make room;
+  anything that still does not fit is tried in other matching containers.
+  Tags do not override container restrictions: an ammo case still cannot hold a gun.
+
+## Compatibility
+
+- **[UI Fixes][uifixes]**: works alongside Stash Master. We handle sorting and
+  merging together, so you can leave its "Combine Stacks Before Sorting" enabled.
+  Its other features, settings, and FiR stack mixing remain in effect.
+- **[Stash Management Helper][smh]**: not fully compatible yet. Its right-click
+  value/weight actions also trigger our organizing workflow and may leave its
+  temporary sort settings unrestored.
+
+Stash Master provides its own folding and merging; neither mod is required.
+
+## Inspiration and thanks
+
+I used and benefited from these mods for a long time. Thank you to their authors
+and maintainers:
+
+- [IOF: Inventory Organizing Feature][iof]: tag rules and recursive collection.
+- [Stash Management Helper][smh]: custom sorting, automatic folding and merging.
+- [UI Fixes][uifixes]: inventory quality of life and merging stacks before sorting.
+
+This project started as an attempt to refactor IOF and somehow grew into a
+complete organizing workflow. Its choices reflect my own taste, with plenty of
+inspiration from the mods that came before it.
+
+[Development notes](docs/development.md) · [Documentation](docs/index.md)
+(in Chinese)
+
+[sort-failure]: assets/images/failed-sort-example.png
+[case-inputs]: assets/images/weapons-sort-comparison.svg
+[armor-native]: assets/images/armor-sort-native.png
+[armor-sm]: assets/images/armor-sort-stash-master.png
+[armor-smh]: assets/images/armor-sort-smh.png
+[armor-sm-custom]: assets/images/armor-sort-stash-master-custom.png
+[comparison]: docs/reports/weapon-sort-boundaries.md
+[timings]: docs/reports/sort-comparison.md
+[iof]: https://sp-mod.com/mod/2960/iof-inventory-organizing-feature
+[smh]: https://sp-mod.com/mod/1861/stash-management-helper
+[uifixes]: https://sp-mod.com/mod/1342/ui-fixes

@@ -31,6 +31,7 @@ internal static class SnapshotReader
             Tag(item),
             Grids(item))
         {
+            SortType = ItemTypeClassifier.Classify(item),
             CategoryPath = CategoryPath(item),
         };
     }

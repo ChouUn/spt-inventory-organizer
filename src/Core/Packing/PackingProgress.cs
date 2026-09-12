@@ -1,7 +1,6 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
-using System.Linq;
 using System.Numerics;
 using System.Threading;
 using Google.OrTools.Sat;
@@ -76,9 +75,8 @@ internal sealed class PackingProgress : IDisposable
         }
     }
 
-    private BigInteger Score(ContainerPackResult result) => _requests
-        .Select((request, grid) => CategoryPacking.Score(request, result.Grids[grid]))
-        .Aggregate(BigInteger.Zero, (sum, score) => sum + score);
+    private BigInteger Score(ContainerPackResult result) =>
+        CategoryOrder.Score(_requests, result);
 
     private void Schedule()
     {

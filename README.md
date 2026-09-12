@@ -66,10 +66,64 @@ MVP 九个步骤均已完成并通过对应验收：tag 编辑、折叠、合并
   游戏事务和首次原生库初始化另有开销，3 秒不是整次整理的耗时上限。
 - 收纳联合选择目标容器的全部网格，考虑尺寸与过滤，原有物品仍在各自网格内重排。
   限时结果不承诺全局最优。
-  CP-SAT 只有改善面积、高度或同等空间下的聚合指标时才替换排序基线。
+  未启用自定义类型顺序时，CP-SAT 只有改善面积、高度或同等空间下的聚合指标时
+  才替换排序基线。
 
 具体行为见 [排布契约](docs/feats/packing.md)。第 9 步已通过游戏内验收；
 新增联合选择与预算分配尚待本轮游戏内验收。
+
+## 类型顺序
+
+启用后，先满足配置的类型先后，再优化空间利用率和类别聚合。
+
+默认启用，沿用 SMH 的物品类型。首次整理后，打开
+`BepInEx/config/com.chouun.stashmaster.category-order.json`，
+按想要的先后调整 `itemTypeOrder`。
+例如让护甲、胸挂、武器依次靠前：
+
+```json
+{
+  "enabled": true,
+  "itemTypeOrder": ["Armor", "Rigs", "Weapons"]
+}
+```
+
+没写的类型排在后面。保存后，下次整理生效，无需重启游戏。
+
+<details>
+<summary>推荐顺序与物品类型（默认配置）</summary>
+
+| 类型名 | 物品 |
+| --- | --- |
+| `Containers` | 收纳容器 |
+| `Headsets` | 耳机 |
+| `Headgear` | 头盔、帽子 |
+| `NightAndThermalVision` | 夜视、热成像设备 |
+| `HeadgearArmor` | 头部附加防护 |
+| `Eyewear` | 眼镜 |
+| `Armor` | 护甲 |
+| `Rigs` | 胸挂 |
+| `BallisticPlates` | 防弹插板 |
+| `Backpacks` | 背包 |
+| `Weapons` | 枪械 |
+| `Magazines` | 弹匣 |
+| `Ammo` | 弹药、弹药盒 |
+| `Grenades` | 投掷物 |
+| `Meds` | 医疗用品 |
+| `Food` | 食物 |
+| `Drink` | 饮料 |
+| `Facecovers` | 面罩 |
+| `Armband` | 臂章 |
+| `Melee` | 近战武器 |
+| `Mods` | 武器配件 |
+| `RepairKits` | 维修工具包 |
+| `SpecialEquipment` | 特殊装备 |
+| `Barter` | 交易物品 |
+| `Keys` | 钥匙、门禁卡 |
+| `Money` | 货币 |
+| `Info` | 情报物品 |
+
+</details>
 
 ## 文档
 

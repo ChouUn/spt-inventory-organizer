@@ -18,6 +18,9 @@ public sealed class Organizer
     private PackBudget _budget = new();
     private readonly Dictionary<string, TagParseResult> _tags = new();
 
+    public IReadOnlyList<string> CategoryOrder { get; init; } =
+        System.Array.Empty<string>();
+
 #if DEBUG
     // 只在最终规划后观察同一输入与结果；Release 不包含基准入口。
     public System.Action<IReadOnlyList<GridPackJob>, ContainerPackResult, double>?
@@ -171,6 +174,7 @@ public sealed class Organizer
                 .Where(i => _port.CanMoveToGrid(i.Id, container.Id, job.GridIndex))
                 .Select(i => new PackItem(i.Id, i.TemplateId, i.Width, i.Height)
                 {
+                    SortType = i.SortType,
                     CategoryPath = i.CategoryPath,
                 }))
                 .ToArray(),
@@ -252,7 +256,11 @@ public sealed class Organizer
     private async Task PackAsync(OrganizeReport report)
     {
         ItemSnapshot root = ReadSnapshot(report);
-        IReadOnlyList<GridPackJob> jobs = PackPlanner.Plan(root, ParseTag);
+        IReadOnlyList<GridPackJob> jobs = PackPlanner.Plan(root, ParseTag)
+            .Select(job => job with
+            {
+                Request = job.Request with { CategoryOrder = CategoryOrder },
+            }).ToArray();
         if (jobs.Count == 0) { return; }
         PackRequest[] requests = jobs.Select(job => job.Request).ToArray();
         double seconds = _budget.Available(false);
@@ -283,6 +291,12 @@ public sealed class Organizer
                 + $"score={CategoryPacking.Score(job.Request, before)}"
                 + $"->{CategoryPacking.Score(job.Request, packed)}, "
                 + $"changed={changed.Length}");
+            if (CategoryOrder.Count > 0)
+            {
+                report.Diagnostics.Add($"category-order {where}: "
+                    + $"penalty={Packing.CategoryOrder.Penalty(job.Request, before)}"
+                    + $"->{Packing.CategoryOrder.Penalty(job.Request, packed)}");
+            }
             if (!packed.Complete)
             {
                 report.Warnings.Add(

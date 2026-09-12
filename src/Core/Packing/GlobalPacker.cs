@@ -8,6 +8,7 @@ namespace ChouUn.StashMaster.Core.Packing;
 /// <summary>最终排布一次联合所有网格；物品归属不变，整个模型共用剩余预算。</summary>
 internal sealed class GlobalPacker
 {
+    private const double MaxCompactionSeconds = 0.75;
     private readonly IPacker _single;
 
     public GlobalPacker(IPacker single) => _single = single;
@@ -22,6 +23,34 @@ internal sealed class GlobalPacker
             PackResult baseline = _single.Pack(r, 0);
             return CategoryPacking.Seed(r, baseline);
         }).ToArray();
+        int[] compactable = Enumerable.Range(0, anonymous.Count).Where(i =>
+            (_single is CpSatPacker || _single is CachedPacker)
+            && CategoryOrder.Pairs(anonymous[i]).Count > 0 && prepared[i].Complete
+            && CategoryOrder.Penalty(anonymous[i], prepared[i]) == 0
+            && CpSatPacker.Height(anonymous[i], prepared[i]) > Array.FindIndex(
+                CpSatPacker.AvailableCells(anonymous[i]),
+                cells => cells >= CpSatPacker.Area(anonymous[i], prepared[i])))
+            .ToArray();
+        try
+        {
+            for (int index = 0; index < compactable.Length; index++)
+            {
+                double budget = Math.Min(MaxCompactionSeconds,
+                    (seconds - elapsed.Elapsed.TotalSeconds)
+                        / (compactable.Length - index + 1));
+                if (budget <= 0) { break; }
+                int grid = compactable[index];
+                prepared[grid] = CategoryOrderCompaction.TryCompact(
+                    anonymous[grid], prepared[grid], budget);
+            }
+        }
+        catch (Exception ex) when (ex is DllNotFoundException
+            || ex is TypeInitializationException
+            || ex is System.IO.FileNotFoundException
+            || ex is System.IO.FileLoadException)
+        {
+            // 与主求解相同的加载失败路径；已生成的完整提示仍可使用。
+        }
         // 独立网格已经达到全部目标界限时，对联合最优值的贡献固定。
         int[] active = Enumerable.Range(0, anonymous.Count).Where(i =>
             !prepared[i].Unplaced.Any(item => item.Required)
@@ -59,6 +88,28 @@ internal sealed class GlobalPacker
 
         ContainerPackResult Finish(ContainerPackResult result, string status)
         {
+            bool orderFailed = false;
+            result = result with
+            {
+                Grids = result.Grids.Select((packed, grid) =>
+                {
+                    PackRequest request = anonymous[grid];
+                    if (CategoryOrder.Penalty(request, packed) == 0)
+                        return packed;
+                    orderFailed = true;
+                    var current = new HashSet<string>(
+                        request.Current.Select(p => p.Id));
+                    return new PackResult(request.Current,
+                        request.Items.Where(i => !current.Contains(i.Id)).ToArray());
+                }).ToArray(),
+            };
+            if (orderFailed)
+            {
+                result = result with
+                {
+                    Warning = "当前预算内未找到符合类别顺序的布局，相关网格保持原样",
+                };
+            }
             return identity.Restore(result with
             {
                 Diagnostic = $"global {status}; grids={requests.Count}, "
@@ -72,6 +123,7 @@ internal sealed class GlobalPacker
     {
         int area = CpSatPacker.Area(request, result);
         return result.Complete && area == CategoryPacking.AreaUpperBound(request)
+            && CategoryOrder.Penalty(request, result) == 0
             && CpSatPacker.Height(request, result)
                 == Array.FindIndex(CpSatPacker.AvailableCells(request), a => a >= area)
             && Enumerable.Range(0, CategoryPacking.Depth(request)).All(d =>

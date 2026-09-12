@@ -10,12 +10,18 @@ internal static class PackingSymmetry
     public static void Add(CpModel model, IReadOnlyList<PackRequest> requests,
         IEnumerable<(int Grid, CpSatModel.Rectangle Rect)> rectangles,
         ContainerPackResult baseline)
+        => Add(model, PackingIdentity.Groups(requests), rectangles, baseline);
+
+    /// <summary>由调用者明确等价分组，压紧提示可仅按类型和尺寸消除重复解。</summary>
+    public static void Add(CpModel model, IReadOnlyList<PackItem[]> groups,
+        IEnumerable<(int Grid, CpSatModel.Rectangle Rect)> rectangles,
+        ContainerPackResult baseline)
     {
         var byId = rectangles.GroupBy(r => r.Rect.Item.Id)
             .ToDictionary(g => g.Key, g => g.ToArray());
         var hints = baseline.Grids.SelectMany((r, grid) => r.Placements.Select(p =>
             (p.Id, Placement: p, Grid: grid))).ToDictionary(p => p.Id);
-        foreach (PackItem[] members in PackingIdentity.Groups(requests))
+        foreach (PackItem[] members in groups)
         {
             PackItem[] group = members
                 .OrderBy(i => hints.TryGetValue(i.Id, out var p)

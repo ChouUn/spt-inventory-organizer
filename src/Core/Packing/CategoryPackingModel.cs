@@ -18,6 +18,10 @@ internal static class CategoryPackingModel
         var grids = new List<List<CpSatModel.Rectangle>>();
         var objectives = new List<IReadOnlyList<PackingObjective>>();
         var details = new List<string>();
+        var layoutHints = new ContainerPackResult(requests.Select((r, i) =>
+            CategoryOrder.Penalty(r, baseline.Grids[i]) == 0
+                ? baseline.Grids[i] : CategoryOrder.Hint(r, baseline.Grids[i]))
+            .ToArray());
         for (int grid = 0; grid < requests.Count; grid++)
         {
             PackRequest request = requests[grid];
@@ -35,7 +39,8 @@ internal static class CategoryPackingModel
             IntVar top = model.NewIntVar(0, request.Height, "top-" + grid);
             var rectangles = new List<CpSatModel.Rectangle>();
             grids.Add(rectangles);
-            var hints = before.Placements.ToDictionary(p => p.Id);
+            PackResult layoutHint = layoutHints.Grids[grid];
+            var hints = layoutHint.Placements.ToDictionary(p => p.Id);
             foreach (PackItem item in request.Items)
             {
                 CpSatModel.Rectangle rect =
@@ -58,7 +63,7 @@ internal static class CategoryPackingModel
             long[] cells = CpSatPacker.AvailableCells(request);
             model.AddElement(top, cells, available);
             model.Add(area <= available);
-            int height = CpSatPacker.Height(request, before);
+            int height = CpSatPacker.Height(request, layoutHint);
             model.AddHint(top, height);
             model.AddHint(available, cells[height]);
             var categoryVariables = new Dictionary<string, IntVar>();
@@ -112,7 +117,10 @@ internal static class CategoryPackingModel
         }
 
         PackingSymmetry.Add(model, requests, grids.SelectMany((g, index) =>
-            g.Select(r => (index, r))), baseline);
+            g.Select(r => (index, r))), layoutHints);
+        CategoryOrderModel.Add(model, requests, grids, layoutHints);
+        bool orderedBaseline = requests.Select((r, i) =>
+            CategoryOrder.Penalty(r, baseline.Grids[i]) == 0).All(x => x);
         IReadOnlyList<PackingObjective> blocks =
             PackingObjective.Sum(model, objectives);
         var diagnostics = new List<string>();
@@ -138,7 +146,7 @@ internal static class CategoryPackingModel
             }
             LinearExpr objective = block.Expression;
             long ceiling = hasSolution ? solver.Value(objective) : block.Current;
-            model.Add(objective <= ceiling);
+            if (hasSolution || orderedBaseline) { model.Add(objective <= ceiling); }
             model.Minimize(objective);
             var stageClock = Stopwatch.StartNew();
             solver.StringParameters = "max_time_in_seconds:"
@@ -215,7 +223,8 @@ internal static class CategoryPackingModel
             : (areaUpper - areaBefore) * heightWeight);
         int lowerHeight = Array.FindIndex(CpSatPacker.AvailableCells(request),
             a => a >= areaBefore);
-        bool spaceOptimal = areaBefore == areaUpper && heightBefore == lowerHeight;
+        bool spaceOptimal = areaBefore == areaUpper && heightBefore == lowerHeight
+            && CategoryOrder.Penalty(request, before) == 0;
         if (spaceOptimal) { model.Add(space == spaceBefore); }
         var objectives = new List<PackingObjective>
         {

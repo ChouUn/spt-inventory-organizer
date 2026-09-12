@@ -84,10 +84,12 @@ public sealed class CachedPacker : IPacker
 
     private static bool Same(PackRequest a, PackRequest b) =>
         a.Width == b.Width && a.Height == b.Height && a.Fixed.SequenceEqual(b.Fixed)
+        && a.CategoryOrder.SequenceEqual(b.CategoryOrder)
         && a.Items.Count == b.Items.Count
         && a.Items.Zip(b.Items, (x, y) => x.Id == y.Id
             && x.TemplateId == y.TemplateId && x.Width == y.Width
             && x.Height == y.Height && x.Required == y.Required
+            && x.SortType == y.SortType
             && x.CategoryPath.SequenceEqual(y.CategoryPath)).All(equal => equal)
         && a.Current.SequenceEqual(b.Current);
 

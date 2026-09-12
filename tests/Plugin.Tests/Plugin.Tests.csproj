@@ -7,6 +7,9 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <Compile Include="../../src/Plugin/Configuration/ItemTypeOrderFile.cs"
+             Link="ItemTypeOrderFile.cs" />
+    <PackageReference Include="Newtonsoft.Json" Version="13.0.3" />
     <!-- 链接实际兼容实现，使用游戏安装的 Harmony，不加载 Unity 或游戏程序集。 -->
     <Compile Include="../../src/Plugin/Compatibility/UIFixesCompatibility.cs"
              Link="UIFixesCompatibility.cs" />
@@ -23,6 +26,8 @@
   </ItemGroup>
 
   <ItemGroup Condition="'$(Configuration)' == 'Debug'">
+    <Compile Include="../../src/Plugin/Adapter/ItemTypeClassifier.cs"
+             Link="ItemTypeClassifier.cs" />
     <Reference Include="netstandard"
       HintPath="$(SPT_DIR)\EscapeFromTarkov_Data\Managed\netstandard.dll" />
     <Compile Include="../../src/Plugin/Diagnostics/SortSimulation.cs"

@@ -8,6 +8,9 @@ public sealed record PackItem(string Id, string TemplateId, int Width, int Heigh
     /// <summary>目标容器原有物品必须保留；新收纳候选可以不选中。</summary>
     public bool Required { get; init; }
 
+    /// <summary>用于自定义顺序的物品类型名，与手册聚合层级独立。</summary>
+    public string SortType { get; init; } = "";
+
     /// <summary>从顶层到直属类别的 ID 链；未知时为空，不计聚合目标。</summary>
     public IReadOnlyList<string> CategoryPath { get; init; } =
         System.Array.Empty<string>();
@@ -24,6 +27,10 @@ public sealed record PackRequest(
     IReadOnlyList<FixedBlock> Fixed,
     IReadOnlyList<PackItem> Items)
 {
+    /// <summary>物品类型名按从上到下排列；空列表保持既有行为。</summary>
+    public IReadOnlyList<string> CategoryOrder { get; init; } =
+        System.Array.Empty<string>();
+
     /// <summary>当前布局作为保底，防止常规排序遗漏原有物品或降低利用率。</summary>
     public IReadOnlyList<Placement> Current { get; init; } =
         System.Array.Empty<Placement>();

@@ -11,6 +11,7 @@ public static class CategoryPacking
     /// <summary>构造空间不退步的层级提示，不限制全局模型后续搜索。</summary>
     internal static PackResult Seed(PackRequest request, PackResult baseline)
     {
+        baseline = CategoryOrder.Seed(request, baseline);
         int depth = Depth(request);
         foreach (bool reverse in new[] { false, true })
         {
@@ -43,7 +44,7 @@ public static class CategoryPacking
                 }
             }
         }
-        return baseline;
+        return CategoryOrder.Seed(request, baseline);
     }
 
     public static int Span(PackRequest request, PackResult result, int level = 0)
@@ -62,9 +63,8 @@ public static class CategoryPacking
     /// <summary>先算各网格完整分数，再求和；与联合模型使用相同目标。</summary>
     internal static int Compare(IReadOnlyList<PackRequest> requests,
         ContainerPackResult next, ContainerPackResult before)
-        => requests.Select((r, i) =>
-                Score(r, next.Grids[i]) - Score(r, before.Grids[i]))
-            .Aggregate(BigInteger.Zero, (sum, difference) => sum + difference).Sign;
+        => (CategoryOrder.Score(requests, next)
+            - CategoryOrder.Score(requests, before)).Sign;
 
     internal static int Compare(PackRequest request, PackResult next, PackResult before)
     {

@@ -59,7 +59,10 @@ internal sealed class GridSortPanelSortPatch : ModulePatch
             panel.ChangeProgress(inProgress: true);
             var stopwatch = Stopwatch.StartNew();
             var organizer = new Organizer(
-                new GameInventoryPort(root, controller), Packer);
+                new GameInventoryPort(root, controller), Packer)
+            {
+                CategoryOrder = Configuration.ItemTypeOrder.Read(),
+            };
 #if DEBUG
             var benchmark = new Diagnostics.NativeSortBenchmark(root);
             organizer.FinalPackPlanned = benchmark.Compare;

@@ -10,6 +10,36 @@ namespace ChouUn.StashMaster.Core.Tests.Organizing;
 
 public sealed class OrganizerTests
 {
+    [Fact]
+    public async Task 类别顺序传到最终排布并实际应用()
+    {
+        ItemSnapshot[] items = new[] { "weapons", "gear", "meds" }
+            .Select((category, row) =>
+                CollectPlannerTests.Leaf(category, LockState.Free) with
+                {
+                    Position = new GridPosition(0, row, false),
+                    SortType = category,
+                    CategoryPath = new[] { category },
+                }).ToArray();
+        var port = new FakePort
+        {
+            Snapshot = CollectPlannerTests.Root() with
+            {
+                Grids = new[] { new GridSnapshot(0, 1, 3, items) },
+            },
+        };
+        var organizer = new Organizer(port, new CachedPacker(new CpSatPacker()))
+        {
+            CategoryOrder = new[] { "meds", "gear", "weapons" },
+        };
+
+        OrganizeReport report = await organizer.RunAsync();
+
+        Assert.Empty(report.Failures);
+        Assert.Equal(new[] { "meds", "gear", "weapons" },
+            port.Snapshot.Grids[0].Items.OrderBy(i => i.Position!.Y).Select(i => i.Id));
+    }
+
 #if DEBUG
     [Fact]
     public async Task 对比观察的是落位前输入和最终规划结果()

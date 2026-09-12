@@ -20,9 +20,14 @@ public sealed class CpSatPacker : IPacker
     private static PackResult PackAnonymous(PackRequest request, double maxSeconds)
     {
         var elapsed = Stopwatch.StartNew();
-        PackResult baseline = Baseline(request);
+        PackResult baseline = Baseline(request with
+        {
+            CategoryOrder = Array.Empty<string>(),
+        });
         string originalSpan = CategoryPacking.Describe(request, baseline);
-        if (maxSeconds > 0 && CategoryPacking.Depth(request) > 0)
+        bool categories = CategoryPacking.Depth(request) > 0
+            || CategoryOrder.Pairs(request).Count > 0;
+        if (maxSeconds > 0 && categories)
         {
             baseline = CategoryPacking.Seed(request, baseline);
         }
@@ -30,8 +35,8 @@ public sealed class CpSatPacker : IPacker
         long[] available = AvailableCells(request);
         int lowerHeight = Array.FindIndex(available, cells => cells >= area);
         string facts = Describe(request, baseline, maxSeconds, lowerHeight);
-        bool categories = CategoryPacking.Depth(request) > 0;
         bool optimum = !baseline.Unplaced.Any(i => i.Required)
+            && CategoryOrder.Penalty(request, baseline) == 0
             && area == CategoryPacking.AreaUpperBound(request)
             && Enumerable.Range(0, CategoryPacking.Depth(request)).All(d =>
                 CategoryPacking.Span(request, baseline, d)
@@ -120,6 +125,11 @@ public sealed class CpSatPacker : IPacker
             return false;
         }
         int difference = Area(request, next) - Area(request, before);
+        if (difference == 0 && request.CategoryOrder.Count > 0)
+        {
+            int ordered = CategoryOrder.Compare(request, next, before);
+            if (ordered != 0) { return ordered < 0; }
+        }
         return difference > 0 || (difference == 0
             && (Height(request, next) < Height(request, before)
                 || (Height(request, next) == Height(request, before)

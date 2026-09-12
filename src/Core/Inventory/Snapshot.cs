@@ -40,6 +40,9 @@ public sealed record ItemSnapshot(
     string? Tag,
     IReadOnlyList<GridSnapshot> Grids)
 {
+    /// <summary>用于自定义排序的物品类型名；未知时为空。</summary>
+    public string SortType { get; init; } = "";
+
     public IReadOnlyList<string> CategoryPath { get; init; } =
         System.Array.Empty<string>();
 }

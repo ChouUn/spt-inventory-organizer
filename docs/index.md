@@ -1,5 +1,7 @@
 # Stash Master 文档目录
 
+> Parent: [../README.md](../README.md)
+
 SPT 一键整理仓库 mod 的项目文档。
 
 - [requirements.md](requirements.md)：用户原始需求与待澄清问题
@@ -14,6 +16,7 @@ SPT 一键整理仓库 mod 的项目文档。
 - [plans/packing-identity.md](plans/packing-identity.md)：等价物品求解与原位身份映射
 - [plans/weighted-grouping.md](plans/weighted-grouping.md)：类别目标去重与联合加权
 - [plans/global-packing.md](plans/global-packing.md)：最终排布统一规划全部容器
+- [plans/type-order-tuning.md](plans/type-order-tuning.md)：客制化排序的调优开放问题
 
 ## 调研报告
 

@@ -20,6 +20,11 @@ SPT 一键整理仓库 mod 的项目文档。
 
 ## 调研报告
 
+- [reports/sort-comparison.md](reports/sort-comparison.md)：
+  同一散乱快照上本项目、原生与 Stash Management Helper 的离线排布对照
+- [reports/weapon-sort-boundaries.md](reports/weapon-sort-boundaries.md)：
+  三组武器箱排序图例、完整结果与回滚验证，以及原生与 SMH 的回退边界
+
 - [reports/fold-and-lock-detection.md](reports/fold-and-lock-detection.md)：
   SPT 4.1 客户端里可折叠、Pin/Lock 与原生排序的判定来源
 - [reports/cpsat-runtime-feasibility.md](reports/cpsat-runtime-feasibility.md)：

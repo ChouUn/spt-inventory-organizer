@@ -1,0 +1,278 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 900 830" role="img" aria-labelledby="title description">
+  <title id="title">Three weapons case inputs and sorting results</title>
+  <desc id="description">Three complete inputs, each in a 5 by 10 weapons case. Native, Stash Management Helper and Stash Master results: 3 MDRs and 2 Mosins: no, no, yes; 3 AK-102s and 2 SR-25s: no, yes, yes; MDR, AK-102, 2 Mosins and SR-25: yes, no, yes.</desc>
+  <rect x="0" y="0" width="900" height="830" fill="#ffffff" stroke="#ffffff" />
+  <g font-family="DejaVu Sans, Arial, sans-serif">
+    <text x="450" y="25" font-size="26" fill="#25282b" text-anchor="middle" dominant-baseline="central">Weapons case inputs / 5 x 10</text>
+    <text x="150" y="66" font-size="21" fill="#25282b" text-anchor="middle" dominant-baseline="central">3 MDRs + 2 Mosins</text>
+    <rect x="25" y="123" width="50" height="50" fill="#f3f5f6" stroke="#d5dadd" />
+    <rect x="75" y="123" width="50" height="50" fill="#f3f5f6" stroke="#d5dadd" />
+    <rect x="125" y="123" width="50" height="50" fill="#f3f5f6" stroke="#d5dadd" />
+    <rect x="175" y="123" width="50" height="50" fill="#f3f5f6" stroke="#d5dadd" />
+    <rect x="225" y="123" width="50" height="50" fill="#f3f5f6" stroke="#d5dadd" />
+    <rect x="25" y="173" width="50" height="50" fill="#f3f5f6" stroke="#d5dadd" />
+    <rect x="75" y="173" width="50" height="50" fill="#f3f5f6" stroke="#d5dadd" />
+    <rect x="125" y="173" width="50" height="50" fill="#f3f5f6" stroke="#d5dadd" />
+    <rect x="175" y="173" width="50" height="50" fill="#f3f5f6" stroke="#d5dadd" />
+    <rect x="225" y="173" width="50" height="50" fill="#f3f5f6" stroke="#d5dadd" />
+    <rect x="25" y="223" width="50" height="50" fill="#f3f5f6" stroke="#d5dadd" />
+    <rect x="75" y="223" width="50" height="50" fill="#f3f5f6" stroke="#d5dadd" />
+    <rect x="125" y="223" width="50" height="50" fill="#f3f5f6" stroke="#d5dadd" />
+    <rect x="175" y="223" width="50" height="50" fill="#f3f5f6" stroke="#d5dadd" />
+    <rect x="225" y="223" width="50" height="50" fill="#f3f5f6" stroke="#d5dadd" />
+    <rect x="25" y="273" width="50" height="50" fill="#f3f5f6" stroke="#d5dadd" />
+    <rect x="75" y="273" width="50" height="50" fill="#f3f5f6" stroke="#d5dadd" />
+    <rect x="125" y="273" width="50" height="50" fill="#f3f5f6" stroke="#d5dadd" />
+    <rect x="175" y="273" width="50" height="50" fill="#f3f5f6" stroke="#d5dadd" />
+    <rect x="225" y="273" width="50" height="50" fill="#f3f5f6" stroke="#d5dadd" />
+    <rect x="25" y="323" width="50" height="50" fill="#f3f5f6" stroke="#d5dadd" />
+    <rect x="75" y="323" width="50" height="50" fill="#f3f5f6" stroke="#d5dadd" />
+    <rect x="125" y="323" width="50" height="50" fill="#f3f5f6" stroke="#d5dadd" />
+    <rect x="175" y="323" width="50" height="50" fill="#f3f5f6" stroke="#d5dadd" />
+    <rect x="225" y="323" width="50" height="50" fill="#f3f5f6" stroke="#d5dadd" />
+    <rect x="25" y="373" width="50" height="50" fill="#f3f5f6" stroke="#d5dadd" />
+    <rect x="75" y="373" width="50" height="50" fill="#f3f5f6" stroke="#d5dadd" />
+    <rect x="125" y="373" width="50" height="50" fill="#f3f5f6" stroke="#d5dadd" />
+    <rect x="175" y="373" width="50" height="50" fill="#f3f5f6" stroke="#d5dadd" />
+    <rect x="225" y="373" width="50" height="50" fill="#f3f5f6" stroke="#d5dadd" />
+    <rect x="25" y="423" width="50" height="50" fill="#f3f5f6" stroke="#d5dadd" />
+    <rect x="75" y="423" width="50" height="50" fill="#f3f5f6" stroke="#d5dadd" />
+    <rect x="125" y="423" width="50" height="50" fill="#f3f5f6" stroke="#d5dadd" />
+    <rect x="175" y="423" width="50" height="50" fill="#f3f5f6" stroke="#d5dadd" />
+    <rect x="225" y="423" width="50" height="50" fill="#f3f5f6" stroke="#d5dadd" />
+    <rect x="25" y="473" width="50" height="50" fill="#f3f5f6" stroke="#d5dadd" />
+    <rect x="75" y="473" width="50" height="50" fill="#f3f5f6" stroke="#d5dadd" />
+    <rect x="125" y="473" width="50" height="50" fill="#f3f5f6" stroke="#d5dadd" />
+    <rect x="175" y="473" width="50" height="50" fill="#f3f5f6" stroke="#d5dadd" />
+    <rect x="225" y="473" width="50" height="50" fill="#f3f5f6" stroke="#d5dadd" />
+    <rect x="25" y="523" width="50" height="50" fill="#f3f5f6" stroke="#d5dadd" />
+    <rect x="75" y="523" width="50" height="50" fill="#f3f5f6" stroke="#d5dadd" />
+    <rect x="125" y="523" width="50" height="50" fill="#f3f5f6" stroke="#d5dadd" />
+    <rect x="175" y="523" width="50" height="50" fill="#f3f5f6" stroke="#d5dadd" />
+    <rect x="225" y="523" width="50" height="50" fill="#f3f5f6" stroke="#d5dadd" />
+    <rect x="25" y="573" width="50" height="50" fill="#f3f5f6" stroke="#d5dadd" />
+    <rect x="75" y="573" width="50" height="50" fill="#f3f5f6" stroke="#d5dadd" />
+    <rect x="125" y="573" width="50" height="50" fill="#f3f5f6" stroke="#d5dadd" />
+    <rect x="175" y="573" width="50" height="50" fill="#f3f5f6" stroke="#d5dadd" />
+    <rect x="225" y="573" width="50" height="50" fill="#f3f5f6" stroke="#d5dadd" />
+    <rect x="26" y="524" width="198" height="98" fill="#95c6ac" stroke="#5c646a" />
+    <rect x="75" y="524" width="0" height="98" fill="none" stroke="#ffffff66" />
+    <rect x="125" y="524" width="0" height="98" fill="none" stroke="#ffffff66" />
+    <rect x="175" y="524" width="0" height="98" fill="none" stroke="#ffffff66" />
+    <rect x="26" y="573" width="198" height="0" fill="none" stroke="#ffffff66" />
+    <text x="125" y="573" font-size="25" fill="#25282b" text-anchor="middle" dominant-baseline="central">MDR</text>
+    <rect x="76" y="324" width="98" height="198" fill="#95c6ac" stroke="#5c646a" />
+    <rect x="125" y="324" width="0" height="198" fill="none" stroke="#ffffff66" />
+    <rect x="76" y="373" width="98" height="0" fill="none" stroke="#ffffff66" />
+    <rect x="76" y="423" width="98" height="0" fill="none" stroke="#ffffff66" />
+    <rect x="76" y="473" width="98" height="0" fill="none" stroke="#ffffff66" />
+    <text x="125" y="423" font-size="25" fill="#25282b" text-anchor="middle" dominant-baseline="central" transform="rotate(-90 125 423)">MDR</text>
+    <rect x="76" y="224" width="198" height="98" fill="#95c6ac" stroke="#5c646a" />
+    <rect x="125" y="224" width="0" height="98" fill="none" stroke="#ffffff66" />
+    <rect x="175" y="224" width="0" height="98" fill="none" stroke="#ffffff66" />
+    <rect x="225" y="224" width="0" height="98" fill="none" stroke="#ffffff66" />
+    <rect x="76" y="273" width="198" height="0" fill="none" stroke="#ffffff66" />
+    <text x="175" y="273" font-size="25" fill="#25282b" text-anchor="middle" dominant-baseline="central">MDR</text>
+    <rect x="226" y="324" width="48" height="298" fill="#e4c982" stroke="#5c646a" />
+    <rect x="226" y="373" width="48" height="0" fill="none" stroke="#ffffff66" />
+    <rect x="226" y="423" width="48" height="0" fill="none" stroke="#ffffff66" />
+    <rect x="226" y="473" width="48" height="0" fill="none" stroke="#ffffff66" />
+    <rect x="226" y="523" width="48" height="0" fill="none" stroke="#ffffff66" />
+    <rect x="226" y="573" width="48" height="0" fill="none" stroke="#ffffff66" />
+    <text x="250" y="473" font-size="25" fill="#25282b" text-anchor="middle" dominant-baseline="central" transform="rotate(-90 250 473)">Mosin</text>
+    <rect x="26" y="224" width="48" height="298" fill="#e4c982" stroke="#5c646a" />
+    <rect x="26" y="273" width="48" height="0" fill="none" stroke="#ffffff66" />
+    <rect x="26" y="323" width="48" height="0" fill="none" stroke="#ffffff66" />
+    <rect x="26" y="373" width="48" height="0" fill="none" stroke="#ffffff66" />
+    <rect x="26" y="423" width="48" height="0" fill="none" stroke="#ffffff66" />
+    <rect x="26" y="473" width="48" height="0" fill="none" stroke="#ffffff66" />
+    <text x="50" y="373" font-size="25" fill="#25282b" text-anchor="middle" dominant-baseline="central" transform="rotate(-90 50 373)">Mosin</text>
+    <text x="61" y="654" font-size="26" fill="#25282b" text-anchor="start" dominant-baseline="central">Native</text>
+    <text x="235" y="654" font-size="34" fill="#9d3038" text-anchor="middle" dominant-baseline="central">×</text>
+    <text x="61" y="693" font-size="26" fill="#25282b" text-anchor="start" dominant-baseline="central">SMH</text>
+    <text x="235" y="693" font-size="34" fill="#9d3038" text-anchor="middle" dominant-baseline="central">×</text>
+    <text x="61" y="732" font-size="26" fill="#25282b" text-anchor="start" dominant-baseline="central">SM</text>
+    <text x="235" y="732" font-size="34" fill="#286b47" text-anchor="middle" dominant-baseline="central">✓</text>
+    <text x="450" y="66" font-size="21" fill="#25282b" text-anchor="middle" dominant-baseline="central">3 AK-102s + 2 SR-25s</text>
+    <rect x="325" y="123" width="50" height="50" fill="#f3f5f6" stroke="#d5dadd" />
+    <rect x="375" y="123" width="50" height="50" fill="#f3f5f6" stroke="#d5dadd" />
+    <rect x="425" y="123" width="50" height="50" fill="#f3f5f6" stroke="#d5dadd" />
+    <rect x="475" y="123" width="50" height="50" fill="#f3f5f6" stroke="#d5dadd" />
+    <rect x="525" y="123" width="50" height="50" fill="#f3f5f6" stroke="#d5dadd" />
+    <rect x="325" y="173" width="50" height="50" fill="#f3f5f6" stroke="#d5dadd" />
+    <rect x="375" y="173" width="50" height="50" fill="#f3f5f6" stroke="#d5dadd" />
+    <rect x="425" y="173" width="50" height="50" fill="#f3f5f6" stroke="#d5dadd" />
+    <rect x="475" y="173" width="50" height="50" fill="#f3f5f6" stroke="#d5dadd" />
+    <rect x="525" y="173" width="50" height="50" fill="#f3f5f6" stroke="#d5dadd" />
+    <rect x="325" y="223" width="50" height="50" fill="#f3f5f6" stroke="#d5dadd" />
+    <rect x="375" y="223" width="50" height="50" fill="#f3f5f6" stroke="#d5dadd" />
+    <rect x="425" y="223" width="50" height="50" fill="#f3f5f6" stroke="#d5dadd" />
+    <rect x="475" y="223" width="50" height="50" fill="#f3f5f6" stroke="#d5dadd" />
+    <rect x="525" y="223" width="50" height="50" fill="#f3f5f6" stroke="#d5dadd" />
+    <rect x="325" y="273" width="50" height="50" fill="#f3f5f6" stroke="#d5dadd" />
+    <rect x="375" y="273" width="50" height="50" fill="#f3f5f6" stroke="#d5dadd" />
+    <rect x="425" y="273" width="50" height="50" fill="#f3f5f6" stroke="#d5dadd" />
+    <rect x="475" y="273" width="50" height="50" fill="#f3f5f6" stroke="#d5dadd" />
+    <rect x="525" y="273" width="50" height="50" fill="#f3f5f6" stroke="#d5dadd" />
+    <rect x="325" y="323" width="50" height="50" fill="#f3f5f6" stroke="#d5dadd" />
+    <rect x="375" y="323" width="50" height="50" fill="#f3f5f6" stroke="#d5dadd" />
+    <rect x="425" y="323" width="50" height="50" fill="#f3f5f6" stroke="#d5dadd" />
+    <rect x="475" y="323" width="50" height="50" fill="#f3f5f6" stroke="#d5dadd" />
+    <rect x="525" y="323" width="50" height="50" fill="#f3f5f6" stroke="#d5dadd" />
+    <rect x="325" y="373" width="50" height="50" fill="#f3f5f6" stroke="#d5dadd" />
+    <rect x="375" y="373" width="50" height="50" fill="#f3f5f6" stroke="#d5dadd" />
+    <rect x="425" y="373" width="50" height="50" fill="#f3f5f6" stroke="#d5dadd" />
+    <rect x="475" y="373" width="50" height="50" fill="#f3f5f6" stroke="#d5dadd" />
+    <rect x="525" y="373" width="50" height="50" fill="#f3f5f6" stroke="#d5dadd" />
+    <rect x="325" y="423" width="50" height="50" fill="#f3f5f6" stroke="#d5dadd" />
+    <rect x="375" y="423" width="50" height="50" fill="#f3f5f6" stroke="#d5dadd" />
+    <rect x="425" y="423" width="50" height="50" fill="#f3f5f6" stroke="#d5dadd" />
+    <rect x="475" y="423" width="50" height="50" fill="#f3f5f6" stroke="#d5dadd" />
+    <rect x="525" y="423" width="50" height="50" fill="#f3f5f6" stroke="#d5dadd" />
+    <rect x="325" y="473" width="50" height="50" fill="#f3f5f6" stroke="#d5dadd" />
+    <rect x="375" y="473" width="50" height="50" fill="#f3f5f6" stroke="#d5dadd" />
+    <rect x="425" y="473" width="50" height="50" fill="#f3f5f6" stroke="#d5dadd" />
+    <rect x="475" y="473" width="50" height="50" fill="#f3f5f6" stroke="#d5dadd" />
+    <rect x="525" y="473" width="50" height="50" fill="#f3f5f6" stroke="#d5dadd" />
+    <rect x="325" y="523" width="50" height="50" fill="#f3f5f6" stroke="#d5dadd" />
+    <rect x="375" y="523" width="50" height="50" fill="#f3f5f6" stroke="#d5dadd" />
+    <rect x="425" y="523" width="50" height="50" fill="#f3f5f6" stroke="#d5dadd" />
+    <rect x="475" y="523" width="50" height="50" fill="#f3f5f6" stroke="#d5dadd" />
+    <rect x="525" y="523" width="50" height="50" fill="#f3f5f6" stroke="#d5dadd" />
+    <rect x="325" y="573" width="50" height="50" fill="#f3f5f6" stroke="#d5dadd" />
+    <rect x="375" y="573" width="50" height="50" fill="#f3f5f6" stroke="#d5dadd" />
+    <rect x="425" y="573" width="50" height="50" fill="#f3f5f6" stroke="#d5dadd" />
+    <rect x="475" y="573" width="50" height="50" fill="#f3f5f6" stroke="#d5dadd" />
+    <rect x="525" y="573" width="50" height="50" fill="#f3f5f6" stroke="#d5dadd" />
+    <rect x="326" y="324" width="98" height="298" fill="#c3acd8" stroke="#5c646a" />
+    <rect x="375" y="324" width="0" height="298" fill="none" stroke="#ffffff66" />
+    <rect x="326" y="373" width="98" height="0" fill="none" stroke="#ffffff66" />
+    <rect x="326" y="423" width="98" height="0" fill="none" stroke="#ffffff66" />
+    <rect x="326" y="473" width="98" height="0" fill="none" stroke="#ffffff66" />
+    <rect x="326" y="523" width="98" height="0" fill="none" stroke="#ffffff66" />
+    <rect x="326" y="573" width="98" height="0" fill="none" stroke="#ffffff66" />
+    <text x="375" y="473" font-size="25" fill="#25282b" text-anchor="middle" dominant-baseline="central" transform="rotate(-90 375 473)">SR-25</text>
+    <rect x="426" y="324" width="98" height="298" fill="#c3acd8" stroke="#5c646a" />
+    <rect x="475" y="324" width="0" height="298" fill="none" stroke="#ffffff66" />
+    <rect x="426" y="373" width="98" height="0" fill="none" stroke="#ffffff66" />
+    <rect x="426" y="423" width="98" height="0" fill="none" stroke="#ffffff66" />
+    <rect x="426" y="473" width="98" height="0" fill="none" stroke="#ffffff66" />
+    <rect x="426" y="523" width="98" height="0" fill="none" stroke="#ffffff66" />
+    <rect x="426" y="573" width="98" height="0" fill="none" stroke="#ffffff66" />
+    <text x="475" y="473" font-size="25" fill="#25282b" text-anchor="middle" dominant-baseline="central" transform="rotate(-90 475 473)">SR-25</text>
+    <rect x="326" y="224" width="148" height="98" fill="#9dbde0" stroke="#5c646a" />
+    <rect x="375" y="224" width="0" height="98" fill="none" stroke="#ffffff66" />
+    <rect x="425" y="224" width="0" height="98" fill="none" stroke="#ffffff66" />
+    <rect x="326" y="273" width="148" height="0" fill="none" stroke="#ffffff66" />
+    <text x="400" y="273" font-size="25" fill="#25282b" text-anchor="middle" dominant-baseline="central">AK-102</text>
+    <rect x="476" y="174" width="98" height="148" fill="#9dbde0" stroke="#5c646a" />
+    <rect x="525" y="174" width="0" height="148" fill="none" stroke="#ffffff66" />
+    <rect x="476" y="223" width="98" height="0" fill="none" stroke="#ffffff66" />
+    <rect x="476" y="273" width="98" height="0" fill="none" stroke="#ffffff66" />
+    <text x="525" y="248" font-size="25" fill="#25282b" text-anchor="middle" dominant-baseline="central" transform="rotate(-90 525 248)">AK-102</text>
+    <rect x="326" y="124" width="148" height="98" fill="#9dbde0" stroke="#5c646a" />
+    <rect x="375" y="124" width="0" height="98" fill="none" stroke="#ffffff66" />
+    <rect x="425" y="124" width="0" height="98" fill="none" stroke="#ffffff66" />
+    <rect x="326" y="173" width="148" height="0" fill="none" stroke="#ffffff66" />
+    <text x="400" y="173" font-size="25" fill="#25282b" text-anchor="middle" dominant-baseline="central">AK-102</text>
+    <text x="361" y="654" font-size="26" fill="#25282b" text-anchor="start" dominant-baseline="central">Native</text>
+    <text x="535" y="654" font-size="34" fill="#9d3038" text-anchor="middle" dominant-baseline="central">×</text>
+    <text x="361" y="693" font-size="26" fill="#25282b" text-anchor="start" dominant-baseline="central">SMH</text>
+    <text x="535" y="693" font-size="34" fill="#286b47" text-anchor="middle" dominant-baseline="central">✓</text>
+    <text x="361" y="732" font-size="26" fill="#25282b" text-anchor="start" dominant-baseline="central">SM</text>
+    <text x="535" y="732" font-size="34" fill="#286b47" text-anchor="middle" dominant-baseline="central">✓</text>
+    <text x="750" y="66" font-size="21" fill="#25282b" text-anchor="middle" dominant-baseline="central">MDR + AK-102</text>
+    <text x="750" y="94" font-size="21" fill="#25282b" text-anchor="middle" dominant-baseline="central">+ 2 Mosins + SR-25</text>
+    <rect x="625" y="123" width="50" height="50" fill="#f3f5f6" stroke="#d5dadd" />
+    <rect x="675" y="123" width="50" height="50" fill="#f3f5f6" stroke="#d5dadd" />
+    <rect x="725" y="123" width="50" height="50" fill="#f3f5f6" stroke="#d5dadd" />
+    <rect x="775" y="123" width="50" height="50" fill="#f3f5f6" stroke="#d5dadd" />
+    <rect x="825" y="123" width="50" height="50" fill="#f3f5f6" stroke="#d5dadd" />
+    <rect x="625" y="173" width="50" height="50" fill="#f3f5f6" stroke="#d5dadd" />
+    <rect x="675" y="173" width="50" height="50" fill="#f3f5f6" stroke="#d5dadd" />
+    <rect x="725" y="173" width="50" height="50" fill="#f3f5f6" stroke="#d5dadd" />
+    <rect x="775" y="173" width="50" height="50" fill="#f3f5f6" stroke="#d5dadd" />
+    <rect x="825" y="173" width="50" height="50" fill="#f3f5f6" stroke="#d5dadd" />
+    <rect x="625" y="223" width="50" height="50" fill="#f3f5f6" stroke="#d5dadd" />
+    <rect x="675" y="223" width="50" height="50" fill="#f3f5f6" stroke="#d5dadd" />
+    <rect x="725" y="223" width="50" height="50" fill="#f3f5f6" stroke="#d5dadd" />
+    <rect x="775" y="223" width="50" height="50" fill="#f3f5f6" stroke="#d5dadd" />
+    <rect x="825" y="223" width="50" height="50" fill="#f3f5f6" stroke="#d5dadd" />
+    <rect x="625" y="273" width="50" height="50" fill="#f3f5f6" stroke="#d5dadd" />
+    <rect x="675" y="273" width="50" height="50" fill="#f3f5f6" stroke="#d5dadd" />
+    <rect x="725" y="273" width="50" height="50" fill="#f3f5f6" stroke="#d5dadd" />
+    <rect x="775" y="273" width="50" height="50" fill="#f3f5f6" stroke="#d5dadd" />
+    <rect x="825" y="273" width="50" height="50" fill="#f3f5f6" stroke="#d5dadd" />
+    <rect x="625" y="323" width="50" height="50" fill="#f3f5f6" stroke="#d5dadd" />
+    <rect x="675" y="323" width="50" height="50" fill="#f3f5f6" stroke="#d5dadd" />
+    <rect x="725" y="323" width="50" height="50" fill="#f3f5f6" stroke="#d5dadd" />
+    <rect x="775" y="323" width="50" height="50" fill="#f3f5f6" stroke="#d5dadd" />
+    <rect x="825" y="323" width="50" height="50" fill="#f3f5f6" stroke="#d5dadd" />
+    <rect x="625" y="373" width="50" height="50" fill="#f3f5f6" stroke="#d5dadd" />
+    <rect x="675" y="373" width="50" height="50" fill="#f3f5f6" stroke="#d5dadd" />
+    <rect x="725" y="373" width="50" height="50" fill="#f3f5f6" stroke="#d5dadd" />
+    <rect x="775" y="373" width="50" height="50" fill="#f3f5f6" stroke="#d5dadd" />
+    <rect x="825" y="373" width="50" height="50" fill="#f3f5f6" stroke="#d5dadd" />
+    <rect x="625" y="423" width="50" height="50" fill="#f3f5f6" stroke="#d5dadd" />
+    <rect x="675" y="423" width="50" height="50" fill="#f3f5f6" stroke="#d5dadd" />
+    <rect x="725" y="423" width="50" height="50" fill="#f3f5f6" stroke="#d5dadd" />
+    <rect x="775" y="423" width="50" height="50" fill="#f3f5f6" stroke="#d5dadd" />
+    <rect x="825" y="423" width="50" height="50" fill="#f3f5f6" stroke="#d5dadd" />
+    <rect x="625" y="473" width="50" height="50" fill="#f3f5f6" stroke="#d5dadd" />
+    <rect x="675" y="473" width="50" height="50" fill="#f3f5f6" stroke="#d5dadd" />
+    <rect x="725" y="473" width="50" height="50" fill="#f3f5f6" stroke="#d5dadd" />
+    <rect x="775" y="473" width="50" height="50" fill="#f3f5f6" stroke="#d5dadd" />
+    <rect x="825" y="473" width="50" height="50" fill="#f3f5f6" stroke="#d5dadd" />
+    <rect x="625" y="523" width="50" height="50" fill="#f3f5f6" stroke="#d5dadd" />
+    <rect x="675" y="523" width="50" height="50" fill="#f3f5f6" stroke="#d5dadd" />
+    <rect x="725" y="523" width="50" height="50" fill="#f3f5f6" stroke="#d5dadd" />
+    <rect x="775" y="523" width="50" height="50" fill="#f3f5f6" stroke="#d5dadd" />
+    <rect x="825" y="523" width="50" height="50" fill="#f3f5f6" stroke="#d5dadd" />
+    <rect x="625" y="573" width="50" height="50" fill="#f3f5f6" stroke="#d5dadd" />
+    <rect x="675" y="573" width="50" height="50" fill="#f3f5f6" stroke="#d5dadd" />
+    <rect x="725" y="573" width="50" height="50" fill="#f3f5f6" stroke="#d5dadd" />
+    <rect x="775" y="573" width="50" height="50" fill="#f3f5f6" stroke="#d5dadd" />
+    <rect x="825" y="573" width="50" height="50" fill="#f3f5f6" stroke="#d5dadd" />
+    <rect x="676" y="224" width="198" height="98" fill="#95c6ac" stroke="#5c646a" />
+    <rect x="725" y="224" width="0" height="98" fill="none" stroke="#ffffff66" />
+    <rect x="775" y="224" width="0" height="98" fill="none" stroke="#ffffff66" />
+    <rect x="825" y="224" width="0" height="98" fill="none" stroke="#ffffff66" />
+    <rect x="676" y="273" width="198" height="0" fill="none" stroke="#ffffff66" />
+    <text x="775" y="273" font-size="25" fill="#25282b" text-anchor="middle" dominant-baseline="central">MDR</text>
+    <rect x="626" y="474" width="98" height="148" fill="#9dbde0" stroke="#5c646a" />
+    <rect x="675" y="474" width="0" height="148" fill="none" stroke="#ffffff66" />
+    <rect x="626" y="523" width="98" height="0" fill="none" stroke="#ffffff66" />
+    <rect x="626" y="573" width="98" height="0" fill="none" stroke="#ffffff66" />
+    <text x="675" y="548" font-size="25" fill="#25282b" text-anchor="middle" dominant-baseline="central" transform="rotate(-90 675 548)">AK-102</text>
+    <rect x="826" y="324" width="48" height="298" fill="#e4c982" stroke="#5c646a" />
+    <rect x="826" y="373" width="48" height="0" fill="none" stroke="#ffffff66" />
+    <rect x="826" y="423" width="48" height="0" fill="none" stroke="#ffffff66" />
+    <rect x="826" y="473" width="48" height="0" fill="none" stroke="#ffffff66" />
+    <rect x="826" y="523" width="48" height="0" fill="none" stroke="#ffffff66" />
+    <rect x="826" y="573" width="48" height="0" fill="none" stroke="#ffffff66" />
+    <text x="850" y="473" font-size="25" fill="#25282b" text-anchor="middle" dominant-baseline="central" transform="rotate(-90 850 473)">Mosin</text>
+    <rect x="626" y="174" width="48" height="298" fill="#e4c982" stroke="#5c646a" />
+    <rect x="626" y="223" width="48" height="0" fill="none" stroke="#ffffff66" />
+    <rect x="626" y="273" width="48" height="0" fill="none" stroke="#ffffff66" />
+    <rect x="626" y="323" width="48" height="0" fill="none" stroke="#ffffff66" />
+    <rect x="626" y="373" width="48" height="0" fill="none" stroke="#ffffff66" />
+    <rect x="626" y="423" width="48" height="0" fill="none" stroke="#ffffff66" />
+    <text x="650" y="323" font-size="25" fill="#25282b" text-anchor="middle" dominant-baseline="central" transform="rotate(-90 650 323)">Mosin</text>
+    <rect x="726" y="324" width="98" height="298" fill="#c3acd8" stroke="#5c646a" />
+    <rect x="775" y="324" width="0" height="298" fill="none" stroke="#ffffff66" />
+    <rect x="726" y="373" width="98" height="0" fill="none" stroke="#ffffff66" />
+    <rect x="726" y="423" width="98" height="0" fill="none" stroke="#ffffff66" />
+    <rect x="726" y="473" width="98" height="0" fill="none" stroke="#ffffff66" />
+    <rect x="726" y="523" width="98" height="0" fill="none" stroke="#ffffff66" />
+    <rect x="726" y="573" width="98" height="0" fill="none" stroke="#ffffff66" />
+    <text x="775" y="473" font-size="25" fill="#25282b" text-anchor="middle" dominant-baseline="central" transform="rotate(-90 775 473)">SR-25</text>
+    <text x="661" y="654" font-size="26" fill="#25282b" text-anchor="start" dominant-baseline="central">Native</text>
+    <text x="835" y="654" font-size="34" fill="#286b47" text-anchor="middle" dominant-baseline="central">✓</text>
+    <text x="661" y="693" font-size="26" fill="#25282b" text-anchor="start" dominant-baseline="central">SMH</text>
+    <text x="835" y="693" font-size="34" fill="#9d3038" text-anchor="middle" dominant-baseline="central">×</text>
+    <text x="661" y="732" font-size="26" fill="#25282b" text-anchor="start" dominant-baseline="central">SM</text>
+    <text x="835" y="732" font-size="34" fill="#286b47" text-anchor="middle" dominant-baseline="central">✓</text>
+    <text x="450" y="781" font-size="20" fill="#555d63" text-anchor="middle" dominant-baseline="central">SMH = Stash Management Helper</text>
+    <text x="450" y="808" font-size="20" fill="#555d63" text-anchor="middle" dominant-baseline="central">SM = Stash Master (ours)</text>
+  </g>
+</svg>

@@ -19,7 +19,6 @@ public sealed class OrganizerTests
                 {
                     Position = new GridPosition(0, row, false),
                     SortType = category,
-                    CategoryPath = new[] { category },
                 }).ToArray();
         var port = new FakePort
         {

@@ -175,7 +175,7 @@ public sealed class Organizer
                 .Select(i => new PackItem(i.Id, i.TemplateId, i.Width, i.Height)
                 {
                     SortType = i.SortType,
-                    CategoryPath = i.CategoryPath,
+                    SubcategoryPath = i.SubcategoryPath,
                 }))
                 .ToArray(),
         }).ToArray();

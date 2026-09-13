@@ -14,7 +14,8 @@ public sealed class CategorySlotModelTests
             new PackItem("item-" + i, "template-" + i, 1, 1)
             {
                 Required = true,
-                CategoryPath = new[] { "valuables", i % 2 == 0 ? "currency" : "jewelry" },
+                SortType = "Valuables",
+                SubcategoryPath = new[] { i % 2 == 0 ? "currency" : "jewelry" },
             }).ToArray();
         var request = new PackRequest(2, 8, Array.Empty<FixedBlock>(), items);
         var before = new PackResult(items.Select((item, i) =>
@@ -71,7 +72,6 @@ public sealed class CategorySlotModelTests
                 {
                     Required = true,
                     SortType = i % 2 == 0 ? "Armor" : "Ammo",
-                    CategoryPath = new[] { i % 2 == 0 ? "armor" : "ammo" },
                 }).ToArray();
             return new PackRequest(2, 4, Array.Empty<FixedBlock>(), items)
             {
@@ -99,19 +99,16 @@ public sealed class CategorySlotModelTests
         }
     }
 
-    [Theory]
-    [InlineData(1)]
-    [InlineData(20)]
-    public void 跨尺寸池共同计算类别范围_深层收益不能抵消父层退步(int parentDepth)
+    [Fact]
+    public void 跨尺寸池共同计算类别范围_子层收益不能抵消顶层退步()
     {
         int[] categories = { 0, 0, 1, 1, 2, 3 };
         PackItem[] items = categories.Select((category, i) =>
             new PackItem("item-" + i, "template-" + i, i < 3 ? 2 : 1, 1)
             {
                 Required = true,
-                CategoryPath = Enumerable.Range(0, parentDepth)
-                    .Select(level => "parent-" + category / 2 + "-" + level)
-                    .Concat(new[] { "child-" + category }).ToArray(),
+                SortType = "parent-" + category / 2,
+                SubcategoryPath = new[] { "child-" + category },
             }).ToArray();
         int[] rows = { 0, 1, 3, 0, 2, 3 };
         var request = new PackRequest(3, 4, Array.Empty<FixedBlock>(), items);
@@ -124,20 +121,20 @@ public sealed class CategorySlotModelTests
 
         PackResult after = Assert.Single(result.Grids);
         // 子层跨度可降至 1，但须把父层跨度从 4 增至 5，不能接受该取舍。
-        // 20 层的精确权重超过单段范围，同时覆盖分段目标继续优化的路径。
-        Assert.Equal(Enumerable.Repeat(4, parentDepth).Concat(new[] { 2 }),
-            CategoryPacking.Spans(request, after));
+        Assert.Equal(new[] { 4, 2 }, CategoryPacking.Spans(request, after));
         AssertPreserved(request, before, after);
     }
 
-    [Fact]
-    public void 相同类别中的不同排序类型仍分别满足先后约束()
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public void 同名子类不跨排序顶层计分_顺序与聚合使用同一范围(bool slots)
     {
         PackItem[] items = Enumerable.Range(0, 8).Select(i =>
             new PackItem("item-" + i, "template-" + i, 1, 1)
             {
                 Required = true,
-                CategoryPath = new[] { i % 2 == 0 ? "shared" : "middle" },
+                SubcategoryPath = new[] { "shared" },
                 SortType = i % 2 != 0 ? "Middle" : i < 4 ? "First" : "Last",
             }).ToArray();
         var request = new PackRequest(2, 4, Array.Empty<FixedBlock>(), items)
@@ -147,18 +144,26 @@ public sealed class CategorySlotModelTests
         var before = new PackResult(items.Select((item, i) =>
             new Placement(item.Id, i % 2, i / 2, false)).ToArray(), Array.Empty<PackItem>());
 
-        ContainerPackResult result = CategorySlotModel.Solve(new[] { request },
-            new ContainerPackResult(new[] { before }), 5, out _);
+        var baseline = new ContainerPackResult(new[] { before });
+        ContainerPackResult? result = slots
+            ? CategorySlotModel.Solve(new[] { request }, baseline, 5, out _)
+            : CategoryPackingModel.Solve(new[] { request }, baseline, 5, out _);
+        Assert.NotNull(result);
 
-        PackResult after = Assert.Single(result.Grids);
-        Assert.Equal(6, CategoryPacking.Span(request, before));
-        Assert.Equal(4, CategoryPacking.Span(request, after));
+        PackResult after = Assert.Single(result!.Grids);
+        Assert.Equal(5, CategoryPacking.Span(request, before));
+        // First 和 Last 各占一行，Middle 占两行；同名子类不产生跨类型共同跨度。
+        Assert.Equal(1, CategoryPacking.Span(request, after));
         Assert.Equal(0, CategoryOrder.Penalty(request, after));
         AssertPreserved(request, before, after);
     }
 
     private static PackItem Item(string id, string category, int width, int height) =>
-        new(id, id, width, height) { Required = true, CategoryPath = new[] { category } };
+        new(id, id, width, height)
+        {
+            Required = true,
+            SortType = category,
+        };
 
     private static void AssertPreserved(PackRequest request, PackResult before, PackResult after)
     {

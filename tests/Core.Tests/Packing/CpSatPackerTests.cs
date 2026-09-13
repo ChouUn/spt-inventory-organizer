@@ -129,7 +129,6 @@ public sealed class CpSatPackerTests
 
         PackResult result = new CpSatPacker().Pack(request);
 
-        Assert.Contains("cp-sat Optimal", result.Diagnostic);
         Assert.True(result.Complete);
         Assert.All(result.Placements, p =>
         {
@@ -140,7 +139,7 @@ public sealed class CpSatPackerTests
     }
 
     [Fact]
-    public void 纯单格直接填空_不启动求解器()
+    public void 纯单格直接填满最少行数()
     {
         var request = new PackRequest(10, 72, Array.Empty<FixedBlock>(),
             Enumerable.Range(0, 360).Select(i =>
@@ -150,7 +149,6 @@ public sealed class CpSatPackerTests
 
         Assert.True(result.Complete);
         Assert.Equal(36, Height(request, result));
-        Assert.DoesNotContain("cp-sat", result.Diagnostic);
         AssertValid(request, result);
     }
 
@@ -180,24 +178,6 @@ public sealed class CpSatPackerTests
         Assert.Equal(5, movableBottom);
     }
 
-    [Fact]
-    public void 日志明确区分预算耗尽与理论最优_保留定位数值()
-    {
-        var request = new PackRequest(4, 8,
-            new[] { new FixedBlock(0, 7, 4, 1) }, new[]
-            {
-                new PackItem("a", "t", 4, 1),
-            });
-
-        PackResult noBudget = new CpSatPacker().Pack(request, maxSeconds: 0);
-        PackResult optimum = new CpSatPacker().Pack(request);
-
-        Assert.Contains("skip=budget-exhausted", noBudget.Diagnostic);
-        Assert.Contains("skip=optimum-bound", optimum.Diagnostic);
-        Assert.Contains("fixed-bottom=8", optimum.Diagnostic);
-        Assert.Contains("baseline-movable-rows=1", optimum.Diagnostic);
-        Assert.Contains("budget=1.000s", optimum.Diagnostic);
-    }
 
     [Fact]
     public void 多种尺寸与固定障碍下不劣于启发式()

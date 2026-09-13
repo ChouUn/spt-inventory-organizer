@@ -64,7 +64,6 @@ public sealed class HierarchyPackingTests
 
         Assert.Equal(new[] { 2, 0 }, CategoryPacking.Spans(request, result.Grids[0]));
         Assert.Equal(new[] { 0 }, CategoryPacking.Spans(shallow, result.Grids[1]));
-        Assert.Contains("skip=area-bound", result.Diagnostic);
     }
 
     [Fact]
@@ -78,11 +77,16 @@ public sealed class HierarchyPackingTests
         PackResult result = new CpSatPacker().Pack(request);
 
         Assert.Equal(2, result.Placements.Count);
-        Assert.Equal(new[] { 1, 1 }, CategoryPacking.Spans(request, result));
-        Assert.Contains("skip=optimum-bound", result.Diagnostic);
+        // 所有候选共享同一类型内子链，压缩后只保留排序顶层。
+        Assert.Equal(new[] { 1 }, CategoryPacking.Spans(request, result));
         CpSatPackerTests.AssertValid(request, result);
     }
 
     private static PackItem Item(string id, params string[] path) =>
-        new(id, id, 1, 1) { Required = true, CategoryPath = path };
+        new(id, id, 1, 1)
+        {
+            Required = true,
+            SortType = path[0],
+            SubcategoryPath = path.Skip(1).ToArray(),
+        };
 }

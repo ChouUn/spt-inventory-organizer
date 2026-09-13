@@ -5,7 +5,7 @@ using System.Numerics;
 
 namespace ChouUn.StashMaster.Core.Packing;
 
-/// <summary>按物品类型覆盖区域的中线约束上下顺序，不改变手册聚合层级。</summary>
+/// <summary>约束统一树顶层覆盖区域的中线顺序，允许边界重叠与穿插。</summary>
 internal static class CategoryOrder
 {
     internal sealed record Pair(string Before, string After);
@@ -14,13 +14,9 @@ internal static class CategoryOrder
     {
         if (request.CategoryOrder.Count == 0 || request.Items.Any(i => !i.Required))
             return Array.Empty<Pair>();
-        var ranks = request.CategoryOrder.Select((id, rank) => (id, rank))
-            .ToDictionary(p => p.id, p => p.rank, StringComparer.Ordinal);
-        string[] ordered = request.Items.Select(i => i.SortType).Distinct()
-            .OrderBy(type => ranks.TryGetValue(type, out int rank)
-                ? rank : int.MaxValue)
-            .ToArray();
-        return ordered.SelectMany((type, index) => ranks.ContainsKey(type)
+        var ranks = new HashSet<string>(request.CategoryOrder, StringComparer.Ordinal);
+        string[] ordered = PackingTree.For(request).Roots.Select(node => node.SortType).ToArray();
+        return ordered.SelectMany((type, index) => ranks.Contains(type)
             ? ordered.Skip(index + 1).Select(next => new Pair(type, next))
             : Enumerable.Empty<Pair>()).ToArray();
     }
@@ -31,10 +27,12 @@ internal static class CategoryOrder
         IReadOnlyList<Pair> pairs = Pairs(request);
         if (pairs.Count == 0) { return 0; }
         long penalty = 0;
-        var items = request.Items.ToDictionary(i => i.Id);
-        var centers = result.Placements.GroupBy(p => items[p.Id].SortType)
-            .ToDictionary(g => g.Key, g => g.Min(p => p.Y) + g.Max(p => p.Y
-                + (p.Rotated ? items[p.Id].Width : items[p.Id].Height)));
+        var positions = result.Placements.ToDictionary(p => p.Id);
+        var centers = PackingTree.For(request).Roots
+            .Select(node => (node.SortType, Extent: PackingTree.Measure(node, positions)))
+            .Where(entry => entry.Extent.End > 0)
+            .ToDictionary(entry => entry.SortType,
+                entry => entry.Extent.First + entry.Extent.End);
         foreach (Pair pair in pairs)
         {
             if (centers.TryGetValue(pair.Before, out int first)

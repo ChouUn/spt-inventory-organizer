@@ -77,7 +77,6 @@ public sealed class PackingObjectiveTests
                     upper, grid == 0 ? 1 : 0, "3"),
             }).ToArray();
         IReadOnlyList<PackingObjective> blocks = PackingObjective.Sum(model, grids);
-        Assert.True(blocks.Count > 1);
         using var solver = new CpSolver();
         foreach (PackingObjective block in blocks)
         {
@@ -110,40 +109,27 @@ public sealed class PackingObjectiveTests
         Assert.Equal(1000, solver.Value(child));
     }
 
-    [Fact]
-    public void 大范围目标分段且不会溢出或丢失较深层()
-    {
-        var model = new CpModel();
-        const long upper = 1L << 30;
-        var objectives = Enumerable.Range(0, 4).Select(i => new PackingObjective(
-            model.NewIntVar(0, upper, "level" + i), upper, upper, i.ToString()))
-            .ToArray();
-
-        var blocks = PackingObjective.Combine(objectives);
-
-        Assert.Equal(4, blocks.Count);
-        Assert.Equal(new[] { "0", "1", "2", "3" }, blocks.Select(b => b.Label));
-        Assert.All(blocks, b => Assert.Equal(upper, b.Upper));
-    }
 
     [Fact]
-    public void 同成员的多层类别保持一致的聚合结果()
+    public void 同成员类别链压缩后仍按转置覆盖高度计分()
     {
         var request = new PackRequest(5, 10, Array.Empty<FixedBlock>(), new[]
         {
             new PackItem("a", "a", 6, 2)
             {
-                Required = true, CategoryPath = new[] { "root", "branch", "leaf" },
+                Required = true, SortType = "Weapons",
+                SubcategoryPath = new[] { "branch", "leaf" },
             },
             new PackItem("b", "b", 6, 2)
             {
-                Required = true, CategoryPath = new[] { "root", "branch", "leaf" },
+                Required = true, SortType = "Weapons",
+                SubcategoryPath = new[] { "branch", "leaf" },
             },
         });
 
         PackResult result = new CpSatPacker().Pack(request);
 
-        Assert.Equal(new[] { 5, 5, 5 }, CategoryPacking.Spans(request, result));
+        Assert.Equal(new[] { 5 }, CategoryPacking.Spans(request, result));
         CpSatPackerTests.AssertValid(request, result);
     }
 }

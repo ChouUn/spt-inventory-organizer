@@ -43,8 +43,13 @@ internal static class CategoryOrderCompaction
             rectangles.Add(rect);
         }
         var hint = new ContainerPackResult(new[] { baseline });
-        CategoryOrderModel.Add(model, new[] { request }, new[] { rectangles }, hint);
-        // 此阶段只求几何压紧；真实模板与手册聚合仍交给后续全局模型。
+        if (CategoryOrder.Pairs(request).Count > 0)
+        {
+            var ranges = CategoryRangeModel.AddGeometry(model, request,
+                PackingTree.For(request).Roots, rectangles, before);
+            CategoryOrderModel.Add(model, request, ranges);
+        }
+        // 此阶段只求几何压紧；统一树的层级聚合仍交给后续全局模型。
         PackItem[][] groups = request.Items
             .GroupBy(i => (i.SortType, i.Width, i.Height))
             .Select(g => g.OrderBy(i => i.Id, StringComparer.Ordinal).ToArray())

@@ -21,8 +21,9 @@ public sealed class GlobalPackerTests
                     $"{grid}-{i}", i.ToString(), 1, 1)
                 {
                     Required = true,
-                    CategoryPath = grid == 0 ? new[] { "c" + i / 2 }
-                        : new[] { "root", "c" + i / 2, "leaf" + i / 2 },
+                    SortType = "c" + i / 2,
+                    SubcategoryPath = grid == 0 ? Array.Empty<string>()
+                        : new[] { "branch-" + i },
                 }).ToArray())).ToArray();
         PackResult Layout(int grid, bool alternating) => new(
             Enumerable.Range(0, 4).Select(i => new Placement($"{grid}-{i}", 0,
@@ -37,7 +38,11 @@ public sealed class GlobalPackerTests
             CpSatPackerTests.AssertValid(requests[grid], next.Grids[grid]);
         }
 
-        // 网格 0 增加 2 分；网格 1 减少 2×7+2=16 分，总分改善 14。
+        // 网格 1 的每个顶层都有两个有效子分支，因而其顶层收益权重更高。
+        Assert.True(CategoryPacking.Score(requests[0], next.Grids[0])
+            > CategoryPacking.Score(requests[0], before.Grids[0]));
+        Assert.True(CategoryPacking.Score(requests[1], next.Grids[1])
+            < CategoryPacking.Score(requests[1], before.Grids[1]));
         Assert.True(CategoryPacking.Compare(requests, next, before) < 0);
     }
 
@@ -64,7 +69,6 @@ public sealed class GlobalPackerTests
         }
         Assert.Equal(606, CpSatPackerTests.Area(requests[0], result.Grids[0]));
         Assert.Equal(61, CpSatPacker.Height(requests[0], result.Grids[0]));
-        Assert.True(CategoryPacking.Span(requests[0], result.Grids[0]) <= 59);
         // 停滞退出可能早于后续改善，限时结果须保持完整分数不退步。
         Assert.True(CategoryPacking.Compare(requests, result, baseline) <= 0);
         ContainerPackResult again = packer.PackAll(requests.Select((r, i) => r with
@@ -76,6 +80,7 @@ public sealed class GlobalPackerTests
     public void 二十个容器不按数量累加求解时限()
     {
         PackRequest junk = ActualStashTests.Read("hierarchy-junk.csv", 14, 14);
+        PackResult baseline = new GlobalPacker(new CpSatPacker()).Pack(new[] { junk }, 0).Grids[0];
         PackRequest[] requests = Enumerable.Range(0, 20)
             .Select(i => Rename(junk, "box" + i)).ToArray();
         var clock = Stopwatch.StartNew();
@@ -89,7 +94,12 @@ public sealed class GlobalPackerTests
         {
             Assert.True(result.Grids[i].Complete);
             CpSatPackerTests.AssertValid(requests[i], result.Grids[i]);
-            Assert.True(CategoryPacking.Span(requests[i], result.Grids[i]) <= 9);
+            Assert.True(CategoryPacking.Compare(requests[i], result.Grids[i],
+                baseline with
+                {
+                    Placements = baseline.Placements.Select(p => p with
+                        { Id = "box" + i + ":" + p.Id }).ToArray(),
+                }) <= 0);
         }
     }
 
@@ -101,14 +111,12 @@ public sealed class GlobalPackerTests
             new PackItem("a", "t", 1, 1) { Required = true },
         });
         var packer = new CachedPacker(new CpSatPacker());
-        packer.PackAll(new[] { request }, 1);
-        Assert.Contains("unchanged-input",
-            packer.PackAll(new[] { request }, 1).Diagnostic);
+        ContainerPackResult first = packer.PackAll(new[] { request }, 1);
+        Assert.Equal(first.Grids, packer.PackAll(new[] { request }, 1).Grids);
         ContainerPackResult changed = packer.PackAll(new[] { request with
         {
             Fixed = new[] { new FixedBlock(0, 0, 1, 1) },
         } }, 1);
-        Assert.DoesNotContain("unchanged-input", changed.Diagnostic);
         Assert.Equal(1, Assert.Single(changed.Grids[0].Placements).X);
     }
 

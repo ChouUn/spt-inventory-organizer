@@ -14,18 +14,19 @@ public sealed class CachedPackerTests
         var item = new PackItem("a", "t", 1, 1)
         {
             Required = true,
-            CategoryPath = new[] { "food", "drink" },
+            SortType = "Food",
+            SubcategoryPath = new[] { "prepared", "canned" },
         };
         var request = new PackRequest(1, 1, Array.Empty<FixedBlock>(), new[] { item });
         packer.Pack(request);
         packer.Pack(request with
         {
-            Items = new[] { item with { CategoryPath = new[] { "food", "drink" } } },
+            Items = new[] { item with { SubcategoryPath = new[] { "prepared", "canned" } } },
         });
         Assert.Equal(1, inner.Calls);
         packer.Pack(request with
         {
-            Items = new[] { item with { CategoryPath = new[] { "other", "drink" } } },
+            Items = new[] { item with { SubcategoryPath = new[] { "preserved", "canned" } } },
         });
         Assert.Equal(2, inner.Calls);
     }
@@ -36,7 +37,7 @@ public sealed class CachedPackerTests
         var inner = new CountingPacker();
         var packer = new CachedPacker(inner);
         var request = new PackRequest(3, 3, Array.Empty<FixedBlock>(),
-            new[] { new PackItem("a", "t", 1, 1) { Required = true } })
+            new[] { new PackItem("a", "t", 1, 1) { Required = true, SortType = "Food" } })
         {
             Current = new[] { new Placement("a", 2, 2, false) },
         };
@@ -53,7 +54,7 @@ public sealed class CachedPackerTests
         {
             Items = new[]
             {
-                request.Items[0] with { CategoryPath = new[] { "food", "drink" } },
+                request.Items[0] with { SubcategoryPath = new[] { "prepared", "canned" } },
             },
         });
         packer.Pack(request with

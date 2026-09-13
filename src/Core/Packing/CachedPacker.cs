@@ -90,7 +90,7 @@ public sealed class CachedPacker : IPacker
             && x.TemplateId == y.TemplateId && x.Width == y.Width
             && x.Height == y.Height && x.Required == y.Required
             && x.SortType == y.SortType
-            && x.CategoryPath.SequenceEqual(y.CategoryPath)).All(equal => equal)
+            && x.SubcategoryPath.SequenceEqual(y.SubcategoryPath)).All(equal => equal)
         && a.Current.SequenceEqual(b.Current);
 
     private sealed record Entry(PackRequest Request, PackResult Result, double Seconds);

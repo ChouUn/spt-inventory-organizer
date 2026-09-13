@@ -66,8 +66,7 @@ internal static class CategoryPackingModel
         {
             PackRequest request = requests[grid];
             PackResult before = baseline.Grids[grid];
-            var spans = Enumerable.Range(0, CategoryPacking.Depth(request))
-                .Select(_ => new List<IntVar>()).ToArray();
+            PackingTree tree = PackingTree.For(request);
             NoOverlap2dConstraint overlap = model.AddNoOverlap2D();
             foreach (FixedBlock block in request.Fixed)
             {
@@ -106,49 +105,11 @@ internal static class CategoryPackingModel
             int height = CpSatPacker.Height(request, layoutHint);
             model.AddHint(top, height);
             model.AddHint(available, cells[height]);
-            var categoryVariables = new Dictionary<string, IntVar>();
-            foreach (var group in rectangles.SelectMany(r => r.Item.CategoryPath
-                .Select((id, level) => (Id: id, Level: level, Rect: r)))
-                .GroupBy(entry => (entry.Id, entry.Level)))
-            {
-                string members = string.Join(",", group.Select(r => r.Rect.Item.Id)
-                    .OrderBy(id => id, StringComparer.Ordinal));
-                if (categoryVariables.TryGetValue(members, out IntVar? existing))
-                {
-                    spans[group.Key.Level].Add(existing);
-                    continue;
-                }
-                // inclusive bottom - first row；缺席类别强制为零。
-                IntVar first = model.NewIntVar(0, request.Height - 1, "category-first");
-                IntVar last = model.NewIntVar(0, request.Height - 1, "category-last");
-                IntVar span = model.NewIntVar(0, request.Height - 1, "category-span");
-                BoolVar active = model.NewBoolVar("category-present");
-                model.AddMaxEquality(active, group.Select(r => r.Rect.Present));
-                model.Add(span == last - first);
-                model.Add(first == 0).OnlyEnforceIf(active.Not());
-                model.Add(last == 0).OnlyEnforceIf(active.Not());
-                foreach (CpSatModel.Rectangle rect in group.Select(r => r.Rect))
-                {
-                    model.Add(first <= rect.Y).OnlyEnforceIf(rect.Present);
-                    model.Add(last >= rect.EndY - 1).OnlyEnforceIf(rect.Present);
-                }
-                var placed = group.Select(r => r.Rect)
-                    .Where(r => hints.ContainsKey(r.Item.Id)).ToArray();
-                int min = placed.Select(r => hints[r.Item.Id].Y).DefaultIfEmpty().Min();
-                int max = placed.Select(r =>
-                {
-                    Placement p = hints[r.Item.Id];
-                    return p.Y + (p.Rotated ? r.Item.Width : r.Item.Height) - 1;
-                }).DefaultIfEmpty().Max();
-                model.AddHint(active, placed.Length > 0);
-                model.AddHint(first, min);
-                model.AddHint(last, max);
-                model.AddHint(span, max - min);
-                spans[group.Key.Level].Add(span);
-                categoryVariables.Add(members, span);
-            }
+            IReadOnlyDictionary<PackingTree.Node, CategoryRangeModel.Range> ranges =
+                CategoryRangeModel.AddGeometry(model, request, tree.Nodes, rectangles, hints);
+            CategoryOrderModel.Add(model, request, ranges);
             objectives.Add(GridObjectives(model, request, before, top, area,
-                spans, out string detail));
+                tree, ranges, out string detail));
             details.Add($"grid={grid} {detail}");
         }
         foreach (var item in grids.SelectMany(g => g).GroupBy(r => r.Item.Id))
@@ -158,7 +119,6 @@ internal static class CategoryPackingModel
 
         PackingSymmetry.Add(model, requests, grids.SelectMany((g, index) =>
             g.Select(r => (index, r))), layoutHints);
-        CategoryOrderModel.Add(model, requests, grids, layoutHints);
         bool orderedBaseline = requests.Select((r, i) =>
             CategoryOrder.Penalty(r, baseline.Grids[i]) == 0).All(x => x);
         IReadOnlyList<PackingObjective> blocks =
@@ -250,7 +210,9 @@ internal static class CategoryPackingModel
     /// <summary>仅在本网格内确定优先级；固定项省去常数，倍率仍按原上界计算。</summary>
     private static IReadOnlyList<PackingObjective> GridObjectives(CpModel model,
         PackRequest request, PackResult before, IntVar top, LinearExpr area,
-        IReadOnlyList<List<IntVar>> spans, out string detail)
+        PackingTree tree,
+        IReadOnlyDictionary<PackingTree.Node, CategoryRangeModel.Range> ranges,
+        out string detail)
     {
         int areaBefore = CpSatPacker.Area(request, before);
         int heightBefore = CpSatPacker.Height(request, before);
@@ -271,16 +233,13 @@ internal static class CategoryPackingModel
             new(space, request.Height + (allRequired ? 0 : areaUpper * heightWeight),
                 spaceBefore, "space", spaceOptimal),
         };
-        var signatures = new HashSet<string>();
         var notes = new List<string>();
         bool precedingFixed = spaceOptimal;
-        for (int level = 0; level < spans.Count; level++)
+        for (int level = 0; level < tree.Levels.Count; level++)
         {
             string label = level.ToString(CultureInfo.InvariantCulture);
-            string signature = string.Join(",", spans[level].Select(v => v.Index)
-                .OrderBy(index => index));
-            if (!signatures.Add(signature)) { notes.Add(label + "=shared"); }
-            LinearExpr expression = LinearExpr.Sum(spans[level]);
+            LinearExpr expression = LinearExpr.Sum(tree.Levels[level]
+                .Select(node => ranges[node].Span));
             long current = CategoryPacking.Span(request, before, level);
             long upper = CategoryPacking.UpperBound(request, level);
             long lower = spaceOptimal
@@ -296,7 +255,7 @@ internal static class CategoryPackingModel
                 label, fixedValue));
             precedingFixed &= fixedValue;
         }
-        detail = "layers=" + spans.Count
+        detail = "layers=" + tree.Levels.Count
             + (notes.Count == 0 ? "" : ", " + string.Join(",", notes));
         return objectives;
     }

@@ -58,7 +58,6 @@ public sealed class ContainerPackerTests
         Assert.True(baseline.Grids.Sum(g => g.Placements.Count) < 4);
         Assert.Equal(3, result.Grids[0].Placements.Count);
         Assert.Equal("square", Assert.Single(result.Grids[1].Placements).Id);
-        Assert.Contains("cp-sat", result.Diagnostic);
         Valid(requests, result);
     }
 

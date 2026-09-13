@@ -16,6 +16,7 @@ internal static class SnapshotReader
     {
         IntVec2 size = item.CalculateCellSize();
         bool canFold = ItemManipulator.CanFold(item, out FoldableComponent foldable);
+        string sortType = ItemTypeClassifier.Classify(item);
         return new ItemSnapshot(
             item.Id,
             item.StringTemplateId,
@@ -31,12 +32,12 @@ internal static class SnapshotReader
             Tag(item),
             Grids(item))
         {
-            SortType = ItemTypeClassifier.Classify(item),
-            CategoryPath = CategoryPath(item),
+            SortType = sortType,
+            SubcategoryPath = ItemCategoryHierarchy.Subcategories(sortType, CategoryPath(item)),
         };
     }
 
-    /// <summary>保留手册完整类别链，按顶层到直属类别传给层级聚合。</summary>
+    /// <summary>读取包含 mod 注册结果的运行时手册链，交给类型边界转换。</summary>
     private static IReadOnlyList<string> CategoryPath(Item item)
     {
         Handbook? handbook = Singleton<Handbook>.Instance;

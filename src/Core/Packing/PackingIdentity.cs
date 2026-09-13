@@ -112,7 +112,7 @@ internal sealed class PackingIdentity
                 PackItem item = g.First().Item;
                 string key = Encode(item.TemplateId) + $"{item.Width},{item.Height};"
                     + Encode(item.SortType)
-                    + Encode(string.Concat(item.CategoryPath.Select(Encode)))
+                    + Encode(string.Concat(item.SubcategoryPath.Select(Encode)))
                     + string.Join(";", g.OrderBy(p => p.grid)
                         .Select(p => $"{p.grid}:{p.Item.Required}"));
                 return (Item: item, Key: key);

@@ -5,34 +5,34 @@ using System.Numerics;
 
 namespace ChouUn.StashMaster.Core.Packing;
 
-/// <summary>逐层统计覆盖行跨度，父层优先；固定障碍与未知类别不计入。</summary>
+/// <summary>统一树逐层统计覆盖行跨度：SortType 顶层优先，固定障碍不计入。</summary>
 public static class CategoryPacking
 {
     /// <summary>构造空间不退步的层级提示，不限制全局模型后续搜索。</summary>
     internal static PackResult Seed(PackRequest request, PackResult baseline)
     {
         baseline = CategoryOrder.Seed(request, baseline);
-        int depth = Depth(request);
+        PackingTree tree = PackingTree.For(request);
         foreach (bool reverse in new[] { false, true })
         {
-            var ranks = Enumerable.Range(0, depth).Select(level =>
+            var ranks = tree.Levels.Select((level, depth) =>
             {
-                var groups = Groups(request, level)
-                    .OrderByDescending(g => g.Sum(i => i.Width * i.Height))
-                    .ThenBy(g => g.Key, StringComparer.Ordinal).ToArray();
-                return (reverse ? groups.Reverse() : groups)
-                    .Select((g, index) => (g.Key, index))
+                bool orderedRoot = depth == 0 && request.CategoryOrder.Count > 0;
+                var groups = orderedRoot ? level.ToArray()
+                    : level.OrderByDescending(node => node.Items.Sum(i => i.Width * i.Height))
+                        .ThenBy(node => node.Key, StringComparer.Ordinal).ToArray();
+                return (reverse && !orderedRoot ? groups.Reverse() : groups)
+                    .Select((node, index) => (node.Key, index))
                     .ToDictionary(p => p.Key, p => p.index);
             }).ToArray();
             var keys = request.Items.ToDictionary(i => i.Id, i => string.Join("/",
-                i.CategoryPath.Select((id, level) => ranks[level][id].ToString("D5"))));
-            // 比较按完整类别链、先大件以及父类内部先大件三种合法提示。
+                tree.Paths[i.Id].Select(node => ranks[node.Depth][node.Key].ToString("D5"))));
+            // 比较完整树路径、先大件以及顶层内部先大件三种合法提示。
             for (int mode = 0; mode < 3; mode++)
             {
                 PackResult seed = HeuristicPacker.PackOrdered(request, request.Items
                     .OrderBy(i => mode == 1 && i.Width * i.Height == 1)
-                    .ThenBy(i => mode == 2 && i.CategoryPath.Count > 0
-                        ? ranks[0][i.CategoryPath[0]] : 0)
+                    .ThenBy(i => mode == 2 ? ranks[0][tree.Paths[i.Id][0].Key] : 0)
                     .ThenBy(i => mode == 2 && i.Width * i.Height == 1)
                     .ThenBy(i => keys[i.Id], StringComparer.Ordinal)
                     .ThenByDescending(i => i.Width * i.Height)
@@ -49,16 +49,23 @@ public static class CategoryPacking
 
     public static int Span(PackRequest request, PackResult result, int level = 0)
     {
-        var items = request.Items.ToDictionary(i => i.Id);
-        return result.Placements.Where(p => items[p.Id].CategoryPath.Count > level)
-            .GroupBy(p => items[p.Id].CategoryPath[level])
-            .Sum(g => g.Max(p => p.Y + (p.Rotated
-                ? items[p.Id].Width : items[p.Id].Height) - 1) - g.Min(p => p.Y));
+        var positions = result.Placements.ToDictionary(p => p.Id);
+        return Level(request, level).Sum(node => Span(node, positions));
     }
 
-    public static int[] Spans(PackRequest request, PackResult result) =>
-        Enumerable.Range(0, Depth(request)).Select(d => Span(request, result, d))
-            .ToArray();
+    public static int[] Spans(PackRequest request, PackResult result)
+    {
+        var positions = result.Placements.ToDictionary(p => p.Id);
+        return PackingTree.For(request).Levels.Select(level =>
+            level.Sum(node => Span(node, positions))).ToArray();
+    }
+
+    private static int Span(PackingTree.Node node,
+        IReadOnlyDictionary<string, Placement> positions)
+    {
+        var extent = PackingTree.Measure(node, positions);
+        return extent.End == 0 ? 0 : extent.End - extent.First - 1;
+    }
 
     /// <summary>先算各网格完整分数，再求和；与联合模型使用相同目标。</summary>
     internal static int Compare(IReadOnlyList<PackRequest> requests,
@@ -68,9 +75,11 @@ public static class CategoryPacking
 
     internal static int Compare(PackRequest request, PackResult next, PackResult before)
     {
-        for (int d = 0; d < Depth(request); d++)
+        int[] afterSpans = Spans(request, next);
+        int[] beforeSpans = Spans(request, before);
+        for (int d = 0; d < afterSpans.Length; d++)
         {
-            int difference = Span(request, next, d) - Span(request, before, d);
+            int difference = afterSpans[d] - beforeSpans[d];
             if (difference != 0) { return difference; }
         }
         return 0;
@@ -82,16 +91,16 @@ public static class CategoryPacking
         BigInteger score = CpSatPacker.Height(request, result)
             + (long)(AreaUpperBound(request) - CpSatPacker.Area(request, result))
                 * (request.Height + 1L);
-        for (int level = 0; level < Depth(request); level++)
+        int[] spans = Spans(request, result);
+        for (int level = 0; level < spans.Length; level++)
         {
-            score = score * (UpperBound(request, level) + 1)
-                + Span(request, result, level);
+            score = score * (UpperBound(request, level) + 1) + spans[level];
         }
         return score;
     }
 
     internal static long UpperBound(PackRequest request, int level) =>
-        (request.Height - 1L) * Groups(request, level).Count();
+        (request.Height - 1L) * Level(request, level).Count;
 
     /// <summary>
     /// 由必留面积和其他类别的最大供给量推导每类不可避免的面积。
@@ -100,8 +109,9 @@ public static class CategoryPacking
     internal static int LowerBound(PackRequest request, int area, int level)
     {
         int total = request.Items.Sum(i => i.Width * i.Height);
-        return Groups(request, level).Sum(group =>
+        return Level(request, level).Sum(node =>
         {
+            IReadOnlyList<PackItem> group = node.Items;
             int needed = Math.Max(group.Where(i => i.Required)
                 .Sum(i => i.Width * i.Height),
                 area - (total - group.Sum(i => i.Width * i.Height)));
@@ -116,15 +126,13 @@ public static class CategoryPacking
         request.Items.Sum(i => i.Width * i.Height),
         (int)CpSatPacker.AvailableCells(request)[request.Height]);
 
-    internal static int Depth(PackRequest request) => request.Items
-        .Select(i => i.CategoryPath.Count).DefaultIfEmpty().Max();
+    internal static int Depth(PackRequest request) => PackingTree.For(request).Levels.Count;
 
-    internal static IEnumerable<IGrouping<string, PackItem>> Groups(
-        PackRequest request, int level) => request.Items
-        .Where(i => i.CategoryPath.Count > level).GroupBy(i => i.CategoryPath[level]);
-
-    internal static bool HasCategories(IEnumerable<PackRequest> requests) =>
-        requests.Any(r => Depth(r) > 0);
+    private static IReadOnlyList<PackingTree.Node> Level(PackRequest request, int level)
+    {
+        var levels = PackingTree.For(request).Levels;
+        return level < levels.Count ? levels[level] : Array.Empty<PackingTree.Node>();
+    }
 
     internal static string Describe(PackRequest request, PackResult result) =>
         "[" + string.Join(",", Spans(request, result)) + "]";

@@ -8,11 +8,11 @@ public sealed record PackItem(string Id, string TemplateId, int Width, int Heigh
     /// <summary>目标容器原有物品必须保留；新收纳候选可以不选中。</summary>
     public bool Required { get; init; }
 
-    /// <summary>用于自定义顺序的物品类型名，与手册聚合层级独立。</summary>
+    /// <summary>统一排序与聚合树的顶层类型名；空值归入未识别类型组。</summary>
     public string SortType { get; init; } = "";
 
-    /// <summary>从顶层到直属类别的 ID 链；未知时为空，不计聚合目标。</summary>
-    public IReadOnlyList<string> CategoryPath { get; init; } =
+    /// <summary>SortType 内部子类别的 ID 链；不含类型边界及外部祖先，空链直接归类型根。</summary>
+    public IReadOnlyList<string> SubcategoryPath { get; init; } =
         System.Array.Empty<string>();
 }
 
@@ -27,7 +27,7 @@ public sealed record PackRequest(
     IReadOnlyList<FixedBlock> Fixed,
     IReadOnlyList<PackItem> Items)
 {
-    /// <summary>物品类型名按从上到下排列；空列表保持既有行为。</summary>
+    /// <summary>统一树顶层从上到下的顺序；空列表只关闭顺序约束，不改变聚合树。</summary>
     public IReadOnlyList<string> CategoryOrder { get; init; } =
         System.Array.Empty<string>();
 

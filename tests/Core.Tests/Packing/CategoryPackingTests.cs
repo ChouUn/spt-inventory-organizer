@@ -48,10 +48,10 @@ public sealed class CategoryPackingTests
         };
         if (hierarchy)
         {
-            items[0] = items[0] with { CategoryPath = new[] { "weapon", "rifle" } };
-            items[1] = items[1] with { CategoryPath = new[] { "gear", "bag" } };
-            items[2] = items[2] with { CategoryPath = new[] { "weapon", "shotgun" } };
-            items[3] = items[3] with { CategoryPath = new[] { "gear", "bag" } };
+            items[0] = items[0] with { SortType = "weapon", SubcategoryPath = new[] { "rifle" } };
+            items[1] = items[1] with { SortType = "gear", SubcategoryPath = new[] { "bag" } };
+            items[2] = items[2] with { SortType = "weapon", SubcategoryPath = new[] { "shotgun" } };
+            items[3] = items[3] with { SortType = "gear", SubcategoryPath = new[] { "bag" } };
         }
         if (equivalent)
         {
@@ -237,8 +237,7 @@ public sealed class CategoryPackingTests
     private static PackItem Item(string id, string? category, int w = 1, int h = 1) =>
         new(id, id, w, h)
         {
-            CategoryPath = category == null ? Array.Empty<string>()
-            : new[] { category },
+            SortType = category ?? "",
             Required = true
         };
 }

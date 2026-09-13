@@ -11,7 +11,7 @@ namespace ChouUn.StashMaster.Core.Packing;
 internal static class CategorySlotModel
 {
     private sealed record Allocation(PackItem[] Items, Placement[] Slots,
-        IntVar Count, IntVar First, IntVar End);
+        IntVar Count);
 
     public static ContainerPackResult Solve(IReadOnlyList<PackRequest> requests,
         ContainerPackResult baseline, double seconds, out string status)
@@ -25,6 +25,8 @@ internal static class CategorySlotModel
         {
             PackRequest request = requests[grid];
             PackResult before = baseline.Grids[grid];
+            PackingTree tree = PackingTree.For(request);
+            var sources = tree.Nodes.Select(_ => new List<CategoryRangeModel.Member>()).ToArray();
             var items = request.Items.ToDictionary(i => i.Id);
             var positions = before.Placements.ToDictionary(p => p.Id);
             originals.Add(positions);
@@ -39,7 +41,10 @@ internal static class CategorySlotModel
                     .Select(g => g.OrderBy(p => p.X).ToArray()).ToArray();
                 var capacity = rows.Select(_ => new List<IntVar>()).ToArray();
                 foreach (var group in pool.Select(p => items[p.Id]).GroupBy(i =>
-                    Encode(i.SortType) + string.Concat(i.CategoryPath.Select(Encode))))
+                {
+                    IReadOnlyList<PackingTree.Node> path = tree.Paths[i.Id];
+                    return path[path.Count - 1];
+                }))
                 {
                     PackItem[] members = group.OrderBy(i => i.TemplateId, StringComparer.Ordinal)
                         .ThenBy(i => i.Id, StringComparer.Ordinal).ToArray();
@@ -64,7 +69,9 @@ internal static class CategorySlotModel
                         model.AddHint(active, hint != 0);
                         model.AddHint(first, hint != 0 ? y : request.Height);
                         model.AddHint(end, hint != 0 ? y + pool.Key.Height : 0);
-                        allocations.Add(new Allocation(members, slots, count, first, end));
+                        allocations.Add(new Allocation(members, slots, count));
+                        var extent = new CategoryRangeModel.Member(first, end);
+                        sources[group.Key.Index].Add(extent);
                         capacity[row].Add(count);
                         counts.Add(count);
                     }
@@ -73,47 +80,22 @@ internal static class CategorySlotModel
                 for (int row = 0; row < rows.Length; row++)
                     model.Add(LinearExpr.Sum(capacity[row]) == rows[row].Length);
             }
-            (IntVar First, IntVar End) Extent(IEnumerable<Allocation> source)
-            {
-                Allocation[] entries = source.ToArray();
-                IntVar first = model.NewIntVar(0, request.Height - 1, "first");
-                IntVar end = model.NewIntVar(1, request.Height, "end");
-                model.AddMinEquality(first, entries.Select(a => a.First));
-                model.AddMaxEquality(end, entries.Select(a => a.End));
-                Placement[] placed = entries.SelectMany(a => a.Items).Select(i => i.Id)
-                    .Distinct().Select(id => positions[id]).ToArray();
-                model.AddHint(first, placed.Min(p => p.Y));
-                model.AddHint(end, placed.Max(p => p.Y
-                    + (p.Rotated ? items[p.Id].Width : items[p.Id].Height)));
-                return (first, end);
-            }
+            var ranges = CategoryRangeModel.Add(model, request, tree.Nodes,
+                node => sources[node.Index], positions, allPresent: true);
             var goals = new List<PackingObjective>
             {
                 new(model.NewConstant(CpSatPacker.Height(request, before)), request.Height,
                     CpSatPacker.Height(request, before), "space", true),
             };
-            for (int level = 0; level < CategoryPacking.Depth(request); level++)
+            for (int level = 0; level < tree.Levels.Count; level++)
             {
-                var spans = new List<LinearExpr>();
-                foreach (var category in allocations.Where(a => a.Items[0].CategoryPath.Count > level)
-                    .GroupBy(a => a.Items[0].CategoryPath[level]))
-                {
-                    var extent = Extent(category);
-                    spans.Add(extent.End - extent.First - 1);
-                }
-                goals.Add(new PackingObjective(LinearExpr.Sum(spans),
+                LinearExpr spans = LinearExpr.Sum(tree.Levels[level]
+                    .Select(node => ranges[node].Span));
+                goals.Add(new PackingObjective(spans,
                     CategoryPacking.UpperBound(request, level),
                     CategoryPacking.Span(request, before, level), "category-" + level));
             }
-            var pairs = CategoryOrder.Pairs(request);
-            var centers = pairs.SelectMany(p => new[] { p.Before, p.After }).Distinct()
-                .ToDictionary(type => type, type =>
-                {
-                    var extent = Extent(allocations.Where(a => a.Items[0].SortType == type));
-                    return extent.First + extent.End;
-                });
-            foreach (var pair in pairs)
-                model.Add(centers[pair.Before] <= centers[pair.After]);
+            CategoryOrderModel.Add(model, request, ranges);
             objectives.Add(goals);
         }
         using var solver = new CpSolver();
@@ -178,6 +160,4 @@ internal static class CategorySlotModel
             return new ContainerPackResult(results);
         }
     }
-
-    private static string Encode(string value) => value.Length + ":" + value;
 }

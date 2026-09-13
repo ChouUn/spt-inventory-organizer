@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using Google.OrTools.Sat;
@@ -10,7 +11,25 @@ internal static class PackingSymmetry
     public static void Add(CpModel model, IReadOnlyList<PackRequest> requests,
         IEnumerable<(int Grid, CpSatModel.Rectangle Rect)> rectangles,
         ContainerPackResult baseline)
-        => Add(model, PackingIdentity.Groups(requests), rectangles, baseline);
+    {
+        // 几何等价由尺寸、树叶和网格资格决定，模板身份只留给结果回填。
+        var groups = requests.SelectMany((request, grid) =>
+        {
+            PackingTree tree = PackingTree.For(request);
+            return request.Items.Select(item =>
+            {
+                var path = tree.Paths[item.Id];
+                string leaf = path[path.Count - 1].Key;
+                string key = $"{grid}:{item.Required}:{item.Width},{item.Height}:{leaf.Length}:{leaf}";
+                return (Item: item, Grid: grid, Key: key);
+            });
+        }).GroupBy(entry => entry.Item.Id).Select(group =>
+            (Item: group.First().Item, Key: string.Join(";", group.OrderBy(entry => entry.Grid)
+                .Select(entry => entry.Key))))
+            .GroupBy(entry => entry.Key).OrderBy(group => group.Key, StringComparer.Ordinal)
+            .Select(group => group.Select(entry => entry.Item).ToArray()).ToArray();
+        Add(model, groups, rectangles, baseline);
+    }
 
     /// <summary>由调用者明确等价分组，压紧提示可仅按类型和尺寸消除重复解。</summary>
     public static void Add(CpModel model, IReadOnlyList<PackItem[]> groups,

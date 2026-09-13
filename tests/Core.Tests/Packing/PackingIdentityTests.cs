@@ -144,8 +144,8 @@ public sealed class PackingIdentityTests
     public void 同形同模板但父类不同不能混合身份()
     {
         var request = Grid(2, 2, Item("a"), Item("b"),
-            Item("c") with { CategoryPath = new[] { "other", "other-child" } },
-            Item("d") with { CategoryPath = new[] { "other", "other-child" } }) with
+            Item("c") with { SortType = "other", SubcategoryPath = new[] { "other-child" } },
+            Item("d") with { SortType = "other", SubcategoryPath = new[] { "other-child" } }) with
         {
             Current = new[]
             {
@@ -156,7 +156,7 @@ public sealed class PackingIdentityTests
 
         PackResult result = new CpSatPacker().Pack(request);
 
-        Assert.Equal(new[] { 0, 0 }, CategoryPacking.Spans(request, result));
+        Assert.Equal(new[] { 0 }, CategoryPacking.Spans(request, result));
         Assert.Equal(2, result.Placements.Count(p => request.Current.Contains(p)));
         CpSatPackerTests.AssertValid(request, result);
     }
@@ -190,7 +190,8 @@ public sealed class PackingIdentityTests
     private static PackItem Item(string id) => new(id, "same", 1, 1)
     {
         Required = true,
-        CategoryPath = new[] { "parent", "child" },
+        SortType = "parent",
+        SubcategoryPath = new[] { "child" },
     };
 
     private static PackRequest Grid(int width, int height, params PackItem[] items)

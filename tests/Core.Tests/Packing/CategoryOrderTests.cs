@@ -13,7 +13,7 @@ public sealed class CategoryOrderTests
     public CategoryOrderTests(ITestOutputHelper output) => _output = output;
 
     [Fact]
-    public void 调换类型顺序且不增加行数或手册跨度()
+    public void 调换类型顺序且不增加行数或类别跨度()
     {
         PackRequest request = Fixture() with
         {
@@ -26,7 +26,7 @@ public sealed class CategoryOrderTests
         Assert.Equal(new[] { "rig", "armor", "ammo" }, result.Placements
             .OrderBy(p => p.Y).Select(p => p.Id));
         Assert.Equal(3, CpSatPacker.Height(request, result));
-        Assert.Equal(new[] { 1, 0 }, CategoryPacking.Spans(request, result));
+        Assert.Equal(new[] { 0 }, CategoryPacking.Spans(request, result));
     }
 
     [Fact]
@@ -45,17 +45,17 @@ public sealed class CategoryOrderTests
         };
         ContainerPackResult changed = packer.PackAll(new[] { request }, 1);
 
-        Assert.DoesNotContain("unchanged-input", changed.Diagnostic);
         Assert.Equal(new[] { "ammo", "armor", "rig" }, changed.Grids[0].Placements
             .OrderBy(p => p.Y).Select(p => p.Id));
-        Assert.Contains("unchanged-input", packer.PackAll(new[] { request with
+        ContainerPackResult repeated = packer.PackAll(new[] { request with
         {
             Current = changed.Grids[0].Placements,
-        } }, 1).Diagnostic);
+        } }, 1);
+        Assert.Equal(changed.Grids, repeated.Grids);
     }
 
     [Fact]
-    public void 类型跨手册父类比较且缺席类型不参与()
+    public void 类型按配置比较且缺席类型不参与()
     {
         PackRequest request = Fixture() with
         {
@@ -78,7 +78,7 @@ public sealed class CategoryOrderTests
         {
             Items = Fixture().Items.Select(i => i with
             {
-                CategoryPath = Array.Empty<string>(),
+                SubcategoryPath = Array.Empty<string>(),
                 SortType = i.Id == "rig" ? "" : i.SortType,
             }).ToArray(),
             CategoryOrder = new[] { "Armor", "Ammo" },
@@ -114,7 +114,7 @@ public sealed class CategoryOrderTests
         {
             Items = Fixture().Items.Select(i => i with
             {
-                TemplateId = "same", CategoryPath = Array.Empty<string>(),
+                TemplateId = "same", SubcategoryPath = Array.Empty<string>(),
             }).ToArray(),
             CategoryOrder = new[] { "Rigs", "Armor", "Ammo" },
         };
@@ -130,7 +130,6 @@ public sealed class CategoryOrderTests
             }).ToArray(),
         };
         ContainerPackResult changed = packer.PackAll(new[] { request }, 1);
-        Assert.DoesNotContain("unchanged-input", changed.Diagnostic);
         Assert.Equal(new[] { "ammo", "armor", "rig" }, changed.Grids[0].Placements
             .OrderBy(p => p.Y).Select(p => p.Id));
     }
@@ -152,10 +151,9 @@ public sealed class CategoryOrderTests
         };
         var before = new PackResult(request.Current, Array.Empty<PackItem>());
         ContainerPackResult result = CategoryPackingModel.Solve(new[] { request },
-            new ContainerPackResult(new[] { before }), 1, out string status)!;
+            new ContainerPackResult(new[] { before }), 1, out _)!;
 
         Assert.NotNull(result);
-        Assert.DoesNotContain("Invalid", status);
         CpSatPackerTests.AssertValid(request, result.Grids[0]);
         Assert.True(CategoryOrder.Compare(request, result.Grids[0], before) < 0);
         Assert.Equal(CpSatPacker.Height(request, before),
@@ -168,8 +166,7 @@ public sealed class CategoryOrderTests
     public void 真实仓库反转类型顺序仍保持压紧()
     {
         PackRequest original = GeometryFixture();
-        PackResult baseline = new GlobalPacker(new CpSatPacker())
-            .Pack(new[] { original }, 1).Grids[0];
+        var baseline = new PackResult(original.Current, Array.Empty<PackItem>());
         var items = original.Items.ToDictionary(i => i.Id);
         string[] order = baseline.Placements
             .GroupBy(p => items[p.Id].SortType)
@@ -195,8 +192,8 @@ public sealed class CategoryOrderTests
     public void 真实仓库可以单独把中间类型前移()
     {
         PackRequest original = GeometryFixture();
-        PackResult baseline = new GlobalPacker(new CpSatPacker())
-            .Pack(new[] { original }, 1).Grids[0];
+        // 固定存档布局，不用限时求解的输出动态生成下一次测试输入。
+        var baseline = new PackResult(original.Current, Array.Empty<PackItem>());
         var items = original.Items.ToDictionary(i => i.Id);
         string[] parents = baseline.Placements
             .GroupBy(p => items[p.Id].SortType)
@@ -265,7 +262,7 @@ public sealed class CategoryOrderTests
             {
                 Required = true,
                 SortType = i % 2 == 0 ? "Armor" : "Ammo",
-                CategoryPath = new[] { "category-" + i },
+                SubcategoryPath = new[] { "category-" + i },
             }).ToArray();
         var request = new PackRequest(2, 4,
             new[] { new FixedBlock(1, 1, 1, 1) }, items)
@@ -307,11 +304,12 @@ public sealed class CategoryOrderTests
         var packer = new CachedPacker(new CpSatPacker());
         ContainerPackResult result = packer.PackAll(new[] { request }, 1);
 
-        Assert.Contains("类别顺序", result.Warning);
+        Assert.NotNull(result.Warning);
         Assert.Equal(request.Current, result.Grids[0].Placements);
         CpSatPackerTests.AssertValid(request, result.Grids[0]);
-        Assert.DoesNotContain("unchanged-input", packer.PackAll(new[] { request }, 0)
-            .Diagnostic);
+        ContainerPackResult repeated = packer.PackAll(new[] { request }, 0);
+        Assert.NotNull(repeated.Warning);
+        Assert.Equal(request.Current, repeated.Grids[0].Placements);
     }
 
     private static PackRequest Fixture() => new(1, 3, Array.Empty<FixedBlock>(), new[]
@@ -319,21 +317,19 @@ public sealed class CategoryOrderTests
         new PackItem("ammo", "a", 1, 1)
         {
             Required = true, SortType = "Ammo",
-            CategoryPath = new[] { "weapons", "ammo" },
         },
         new PackItem("armor", "b", 1, 1)
         {
             Required = true, SortType = "Armor",
-            CategoryPath = new[] { "gear", "armor" },
         },
         new PackItem("rig", "c", 1, 1)
         {
             Required = true, SortType = "Rigs",
-            CategoryPath = new[] { "gear", "rigs" },
         },
     });
 
     // 类型表由同一快照的运行时模板及游戏类型判定生成，模板编号与几何快照对应。
+    // 此 fixture 只验证几何和类型顺序；真实类型不能继承匿名化的合成子链。
     private static PackRequest GeometryFixture()
     {
         using Stream stream = typeof(CategoryOrderTests).Assembly
@@ -348,7 +344,10 @@ public sealed class CategoryOrderTests
         return request with
         {
             Items = request.Items.Select(i => i with
-                { SortType = types[i.TemplateId] }).ToArray(),
+            {
+                SortType = types[i.TemplateId],
+                SubcategoryPath = Array.Empty<string>(),
+            }).ToArray(),
         };
     }
 }

@@ -71,7 +71,7 @@ public static class PackPlanner
         {
             Required = true,
             SortType = item.SortType,
-            CategoryPath = item.CategoryPath,
+            SubcategoryPath = item.SubcategoryPath,
         };
     }
 

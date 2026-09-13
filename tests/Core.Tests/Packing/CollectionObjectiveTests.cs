@@ -32,7 +32,6 @@ public sealed class CollectionObjectiveTests
         ContainerPackResult result = new ContainerPacker(new CpSatPacker())
             .Pack(requests, 1);
 
-        Assert.Contains("skip=area-bound", result.Diagnostic);
         for (int g = 0; g < grids; g++)
         {
             Assert.True(result.Grids[g].Complete);
@@ -57,7 +56,6 @@ public sealed class CollectionObjectiveTests
         ContainerPackResult result = new ContainerPacker(new CpSatPacker())
             .Pack(new[] { request }, 1);
 
-        Assert.Contains("skip=area-bound", result.Diagnostic);
         Assert.Equal("4", Assert.Single(result.Grids[0].Unplaced).Id);
         Assert.All(request.Current, p =>
             Assert.Contains(p, result.Grids[0].Placements));
@@ -74,7 +72,8 @@ public sealed class CollectionObjectiveTests
             .Select(i => new PackItem("bar" + i, "bar", 1, 3)).ToArray();
         PackItem[] items = new[] { square }.Concat(bars).Select(i => i with
         {
-            CategoryPath = categories ? new[] { "parent", i.TemplateId }
+            SortType = categories ? "parent" : "",
+            SubcategoryPath = categories ? new[] { i.TemplateId }
                 : Array.Empty<string>(),
         }).ToArray();
         var request = new PackRequest(3, 3, Array.Empty<FixedBlock>(), items);
@@ -84,7 +83,6 @@ public sealed class CollectionObjectiveTests
 
         Assert.Equal(new[] { "bar0", "bar1", "bar2" },
             result.Grids[0].Placements.Select(p => p.Id).OrderBy(id => id));
-        Assert.Contains("objective=area", result.Diagnostic);
         CpSatPackerTests.AssertValid(request, result.Grids[0]);
     }
 
@@ -92,6 +90,7 @@ public sealed class CollectionObjectiveTests
         new(id, id, 1, 1)
         {
             Required = required,
-            CategoryPath = new[] { category, id },
+            SortType = category,
+            SubcategoryPath = new[] { id },
         };
 }

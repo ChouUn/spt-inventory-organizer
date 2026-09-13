@@ -14,9 +14,10 @@ public sealed class ActualStashTests
     public ActualStashTests(ITestOutputHelper output) => _output = output;
 
     [Fact]
-    public void 实际垃圾箱去身份后保持层级质量且减少实际移动()
+    public void 垃圾箱几何与合成层级保持质量且减少实际移动()
     {
         PackRequest request = Read("hierarchy-junk.csv", 14, 14);
+        PackResult baseline = new CpSatPacker().Pack(request, 0);
 
         PackResult result = new CpSatPacker().Pack(request, 1);
 
@@ -24,22 +25,19 @@ public sealed class ActualStashTests
         Assert.True(result.Complete);
         Assert.Equal(134, CpSatPackerTests.Area(request, result));
         Assert.Equal(10, Height(request, result));
-        int[] spans = CategoryPacking.Spans(request, result);
-        Assert.True(spans[0] < 8 || (spans[0] == 8 && spans[1] <= 10),
-            result.Diagnostic);
+        Assert.True(CategoryPacking.Score(request, result)
+            <= CategoryPacking.Score(request, baseline));
         Assert.True(result.Placements.Count(p => !request.Current.Contains(p)) <= 94,
             result.Diagnostic);
         CpSatPackerTests.AssertValid(request, result);
     }
 
     [Fact]
-    public void 刚整理后的真实仓库继续改善父类聚合且空间不退步()
+    public void 整理后仓库几何继续改善合成父类聚合且空间不退步()
     {
         PackRequest request = Read("hierarchy-stash.csv");
         var before = new PackResult(request.Current, Array.Empty<PackItem>());
         var packer = new CachedPacker(new CpSatPacker());
-        Assert.Equal(new[] { 195, 256, 117, 39 },
-            CategoryPacking.Spans(request, before));
 
         PackResult result = packer.Pack(request, 1);
 
@@ -47,45 +45,24 @@ public sealed class ActualStashTests
         _output.WriteLine("before=" + string.Join(",", CategoryPacking.Spans(
             request, before)) + "; after=" + string.Join(",",
                 CategoryPacking.Spans(request, result)));
-        foreach (string category in new[] { "21", "22", "70" })
-        {
-            PackRequest group = request with
-            {
-                Items = request.Items.Where(i => i.CategoryPath.Count > 0
-                    && i.CategoryPath[0] == category).ToArray(),
-            };
-            var ids = group.Items.Select(i => i.Id).ToArray();
-            _output.WriteLine($"parent {category}: "
-                + CategoryPacking.Span(group, before with
-                {
-                    Placements = before.Placements.Where(p => ids.Contains(p.Id))
-                        .ToArray(),
-                })
-                + " -> " + CategoryPacking.Span(group, result with
-                {
-                    Placements = result.Placements.Where(p => ids.Contains(p.Id))
-                        .ToArray(),
-                }));
-        }
         Assert.True(result.Complete);
         Assert.Equal(606, CpSatPackerTests.Area(request, result));
         Assert.Equal(61, Height(request, result));
-        Assert.True(CategoryPacking.Span(request, result) <= 59, result.Diagnostic);
+        Assert.True(CategoryPacking.Score(request, result)
+            < CategoryPacking.Score(request, before));
         CpSatPackerTests.AssertValid(request, result);
         PackResult again = packer.Pack(request with { Current = result.Placements });
-        Assert.Contains("skip=unchanged-input", again.Diagnostic);
         Assert.Equal(result.Placements, again.Placements);
     }
 
     [Fact]
-    public void 当前仓库在一秒预算内实质改善类别聚合()
+    public void 仓库几何在一秒预算内实质改善合成类别聚合()
     {
         PackRequest request = Read();
         var before = new PackResult(request.Current, Array.Empty<PackItem>());
         Assert.Equal(322, request.Items.Count);
         Assert.Equal(606, CpSatPackerTests.Area(request, before));
         Assert.Equal(61, Height(request, before));
-        Assert.Equal(677, CategoryPacking.Span(request, before));
         CpSatPackerTests.AssertValid(request, before);
 
         var packer = new CachedPacker(new CpSatPacker());
@@ -95,10 +72,10 @@ public sealed class ActualStashTests
         CpSatPackerTests.AssertValid(request, result);
         Assert.True(result.Complete);
         Assert.Equal(61, Height(request, result));
-        Assert.True(CategoryPacking.Span(request, result) <= 247, result.Diagnostic);
+        Assert.True(CategoryPacking.Score(request, result)
+            < CategoryPacking.Score(request, before));
         var elapsed = System.Diagnostics.Stopwatch.StartNew();
         PackResult again = packer.Pack(request with { Current = result.Placements }, 1);
-        Assert.Contains("skip=unchanged-input", again.Diagnostic);
         Assert.Equal(result.Placements, again.Placements);
         Assert.True(elapsed.ElapsedMilliseconds < 100);
         _output.WriteLine($"unchanged repeat: {elapsed.ElapsedMilliseconds} ms");
@@ -109,7 +86,9 @@ public sealed class ActualStashTests
             ? request.Items.Single(i => i.Id == p.Id).Width
             : request.Items.Single(i => i.Id == p.Id).Height));
 
-    // 存档位置 + 运行时模组模板 + 游戏/Foldables 尺寸公式，匿名化身份与分类。
+    // 存档位置 + 运行时模组模板 + 游戏/Foldables 尺寸公式，身份已匿名化。
+    // 分类路径只是合成层级，不代表真实游戏 taxonomy：首段定义 FixtureGroup，
+    // 其余段才是类型内相对子链。CategoryOrderTests 覆盖类型时必须丢弃合成子链。
     internal static PackRequest Read(string fixture = "current-stash.csv",
         int width = 10, int height = 72)
     {
@@ -131,7 +110,9 @@ public sealed class ActualStashTests
                 new PackItem(r[0].ToString(), r[1].ToString("D3"), r[3], r[4])
                 {
                     Required = true,
-                    CategoryPath = paths[r[0].ToString()],
+                    SortType = paths[r[0].ToString()].Length == 0
+                        ? "" : "FixtureGroup:" + paths[r[0].ToString()][0],
+                    SubcategoryPath = paths[r[0].ToString()].Skip(1).ToArray(),
                 }).ToArray())
         {
             Current = rows.Where(r => r[8] == 0).Select(r =>

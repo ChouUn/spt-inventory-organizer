@@ -43,6 +43,7 @@ public sealed record ItemSnapshot(
     /// <summary>用于自定义排序的物品类型名；未知时为空。</summary>
     public string SortType { get; init; } = "";
 
-    public IReadOnlyList<string> CategoryPath { get; init; } =
+    /// <summary>SortType 边界以内的类别 ID 链；不含边界本身及旧祖先。</summary>
+    public IReadOnlyList<string> SubcategoryPath { get; init; } =
         System.Array.Empty<string>();
 }

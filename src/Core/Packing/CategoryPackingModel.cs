@@ -15,7 +15,7 @@ internal static class CategoryPackingModel
     {
         var elapsed = Stopwatch.StartNew();
         // 固定占位后的网格互不耦合；先处理小网格，避免大仓库建模耗尽提示预算。
-        // 所有提示共用半份剩余预算，另一半仍交给不限制位置的联合几何搜索。
+        // 占位提示与联合几何按 2:1 分配剩余预算；提示未用完的额度交给几何搜索。
         var diagnostics = new List<string>();
         PackResult[] prepared = baseline.Grids.ToArray();
         int[] eligible = Enumerable.Range(0, requests.Count).Where(i =>
@@ -24,7 +24,7 @@ internal static class CategoryPackingModel
             .OrderBy(i => requests[i].Items.Count).ToArray();
         for (int index = 0; index < eligible.Length; index++)
         {
-            double budget = (seconds / 2 - elapsed.Elapsed.TotalSeconds)
+            double budget = (seconds * (2.0 / 3) - elapsed.Elapsed.TotalSeconds)
                 / (eligible.Length - index);
             if (budget <= 0) { break; }
             int grid = eligible[index];

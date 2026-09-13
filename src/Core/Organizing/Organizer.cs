@@ -252,7 +252,7 @@ public sealed class Organizer
         }
     }
 
-    /// <summary>全部网格共同规划，再逐网格校验与提交；物品归属保持不变。</summary>
+    /// <summary>全部网格共享预算联合规划，再逐网格校验与提交；物品归属保持不变。</summary>
     private async Task PackAsync(OrganizeReport report)
     {
         ItemSnapshot root = ReadSnapshot(report);

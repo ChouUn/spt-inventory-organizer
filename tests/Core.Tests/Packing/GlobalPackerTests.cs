@@ -47,7 +47,7 @@ public sealed class GlobalPackerTests
     }
 
     [Fact]
-    public void 仓库与多个容器统一求解且归属不变()
+    public void 仓库与多个容器联合排布且归属不变()
     {
         PackRequest[] requests =
         {
@@ -121,7 +121,7 @@ public sealed class GlobalPackerTests
     }
 
     [Fact]
-    public void 单一类型容器参与联合排布时也应压紧()
+    public void 单一类型容器参与整次排布时也应压紧()
     {
         // 实际八行弹匣布局的匿名几何；保留跨模板等价组和输入次序。
         (int Template, int X, int Y)[] layout =

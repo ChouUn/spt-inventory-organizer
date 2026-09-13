@@ -2,7 +2,7 @@ using System;
 
 namespace ChouUn.StashMaster.Core.Organizing;
 
-/// <summary>收纳每次最多 1 秒、合计 2 秒；最终联合排布使用整次 3 秒的余量。</summary>
+/// <summary>收纳每次最多 1 秒、合计 2 秒；最终各网格共享整次 3 秒的余量。</summary>
 public sealed class PackBudget
 {
     public double CollectionSeconds { get; private set; }

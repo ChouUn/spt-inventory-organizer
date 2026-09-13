@@ -35,6 +35,21 @@ public sealed class ItemTypeClassifierTests
     }
 
     [Fact]
+    public void 海报归杂物并保留手册中的其他子类()
+    {
+        var flyer = (Item)FormatterServices.GetUninitializedObject(typeof(Flyer));
+        string sortType = ItemTypeClassifier.Classify(flyer);
+
+        Assert.Equal("Barter", sortType);
+        Assert.Equal(new[] { "5b47574386f77428ca22b2f4" },
+            ItemCategoryHierarchy.Subcategories(sortType, new[]
+            {
+                "5b47574386f77428ca22b33e",
+                "5b47574386f77428ca22b2f4",
+            }));
+    }
+
+    [Fact]
     public void 未识别物品保留为空类型()
     {
         var item = (Item)FormatterServices.GetUninitializedObject(typeof(Item));

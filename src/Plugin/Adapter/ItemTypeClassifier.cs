@@ -23,7 +23,7 @@ internal static class ItemTypeClassifier
         Drink => "Drink",
         Mod => "Mods",
         ThrowWeap => "Grenades",
-        BarterItem => "Barter",
+        BarterItem or Flyer => "Barter",
         Vest => "Rigs",
         Headphones => "Headsets",
         Key => "Keys",

@@ -112,6 +112,45 @@ public sealed class GlobalPackerTests
         Assert.Equal(1, Assert.Single(changed.Grids[0].Placements).X);
     }
 
+    [Fact]
+    public void 单一类型容器参与联合排布时也应压紧()
+    {
+        // 实际八行弹匣布局的匿名几何；保留跨模板等价组和输入次序。
+        (int Template, int X, int Y)[] layout =
+        {
+            (0, 0, 0), (0, 1, 0), (0, 2, 0), (4, 2, 4), (4, 3, 4),
+            (4, 4, 4), (4, 1, 4), (2, 3, 2), (2, 2, 2), (2, 4, 2),
+            (3, 0, 4), (5, 0, 6), (5, 1, 6), (1, 0, 2), (1, 3, 0),
+            (1, 1, 2), (1, 4, 0),
+        };
+        var magazines = new PackRequest(5, 10, Array.Empty<FixedBlock>(),
+            layout.Select((p, i) => new PackItem(
+                "magazine-" + i, "magazine-" + p.Template, 1, 2)
+            {
+                Required = true,
+                SortType = "Magazines",
+            }).ToArray())
+        {
+            Current = layout.Select((p, i) =>
+                new Placement("magazine-" + i, p.X, p.Y, false)).ToArray(),
+        };
+        PackRequest[] requests =
+        {
+            ActualStashTests.Read("hierarchy-stash.csv"), magazines,
+            Rename(ActualStashTests.Read("hierarchy-junk.csv", 14, 14), "junk"),
+        };
+
+        ContainerPackResult result = new GlobalPacker(new CpSatPacker()).Pack(requests, 3);
+
+        for (int grid = 0; grid < requests.Length; grid++)
+        {
+            Assert.True(result.Grids[grid].Complete);
+            CpSatPackerTests.AssertValid(requests[grid], result.Grids[grid]);
+        }
+        Assert.Equal(34, CpSatPackerTests.Area(magazines, result.Grids[1]));
+        Assert.Equal(7, CpSatPacker.Height(magazines, result.Grids[1]));
+    }
+
     private static PackRequest Rename(PackRequest request, string prefix)
         => request with
         {

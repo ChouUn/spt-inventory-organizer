@@ -25,7 +25,8 @@ internal sealed class GlobalPacker
         }).ToArray();
         int[] compactable = Enumerable.Range(0, anonymous.Count).Where(i =>
             (_single is CpSatPacker || _single is CachedPacker)
-            && CategoryOrder.Pairs(anonymous[i]).Count > 0 && prepared[i].Complete
+            && prepared[i].Complete
+            && anonymous[i].Items.All(item => item.Required)
             && CategoryOrder.Penalty(anonymous[i], prepared[i]) == 0
             && CpSatPacker.Height(anonymous[i], prepared[i]) > Array.FindIndex(
                 CpSatPacker.AvailableCells(anonymous[i]),
